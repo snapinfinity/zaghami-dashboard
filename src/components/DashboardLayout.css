@@ -1,0 +1,11 @@
+.dashboard-layout-simple {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  justify-content: center;
+}
+
+.main-content-simple {
+  flex: 1;
+  width: 100%;
+}
