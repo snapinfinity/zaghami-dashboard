@@ -6,6 +6,8 @@ import { ContactMessages } from './pages/ContactMessages';
 import { ClientManagement } from './pages/ClientManagement';
 import { PartnerManagement } from './pages/PartnerManagement';
 import { ProjectManagement } from './pages/ProjectManagement';
+import { TechnicalResources } from './pages/TechnicalResources';
+import { ProductCategories } from './pages/ProductCategories';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
           <Route path="clients" element={<ClientManagement />} />
           <Route path="partners" element={<PartnerManagement />} />
           <Route path="projects" element={<ProjectManagement />} />
+          <Route path="resources" element={<TechnicalResources />} />
+          <Route path="categories" element={<ProductCategories />} />
         </Route>
       </Routes>
     </Router>

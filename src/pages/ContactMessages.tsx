@@ -67,9 +67,24 @@ export const ContactMessages: React.FC = () => {
           }
         }
 
+        let parsedStatus: MessageStatus = 'Unresolved';
+        if (typeof data.status === 'string') {
+          const lowerStatus = data.status.toLowerCase();
+          if (lowerStatus === 'resolved' || lowerStatus === 'read') {
+             parsedStatus = 'Resolved';
+          } else if (lowerStatus === 'unresolved' || lowerStatus === 'unread' || lowerStatus === 'new') {
+             parsedStatus = 'Unresolved';
+          } else {
+             // Fallback for any other string
+             parsedStatus = 'Unresolved';
+          }
+        }
+
         msgs.push({ 
           id: doc.id, 
           ...data,
+          status: parsedStatus,
+          isRead: !!data.isRead,
           date: displayDate
         } as Message);
       });

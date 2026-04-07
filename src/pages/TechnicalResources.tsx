@@ -1,0 +1,253 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Trash2, ArrowLeft, X, Loader2, UploadCloud, FileText, Download } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { collection, query, onSnapshot, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
+import './TechnicalResources.css';
+
+export interface TechnicalResource {
+  id: string;
+  titleEn: string;
+  titleAr: string;
+  size: string;
+  fileUrl: string;
+  createdAt?: any;
+}
+
+export const TechnicalResources: React.FC = () => {
+  const navigate = useNavigate();
+  const [resources, setResources] = useState<TechnicalResource[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({ titleEn: '', titleAr: '', size: '', fileUrl: '' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'technical_resources'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: TechnicalResource[] = [];
+      snapshot.forEach(d => {
+        docs.push({ id: d.id, ...d.data() } as TechnicalResource);
+      });
+      docs.sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return b.createdAt.toMillis() - a.createdAt.toMillis();
+      });
+      setResources(docs);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploadingFile(true);
+
+      // Auto-calculate file size
+      let computedSize = "";
+      if (file.size < 1024 * 1024) {
+        computedSize = (file.size / 1024).toFixed(1) + ' KB';
+      } else {
+        computedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      try {
+        const storageRef = ref(storage, `technical_resources/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        
+        uploadTask.on(
+          "state_changed",
+          null, // ignoring progress for simplicity
+          (error) => {
+            console.error("Upload failed:", error);
+            setIsUploadingFile(false);
+            alert("File upload failed. Ensure your Firebase Storage rules allow writing.");
+          },
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            setFormData(prev => ({ ...prev, fileUrl: downloadURL, size: computedSize }));
+            setIsUploadingFile(false);
+          }
+        );
+      } catch (err) {
+        console.error(err);
+        setIsUploadingFile(false);
+        alert("An error occurred starting the file upload.");
+      }
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.fileUrl) {
+      alert("Please upload a document file.");
+      return;
+    }
+    if (!formData.titleEn || !formData.titleAr) {
+      alert("Please provide both English and Arabic titles.");
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await addDoc(collection(db, 'technical_resources'), {
+        ...formData,
+        createdAt: serverTimestamp()
+      });
+      setIsModalOpen(false);
+      setFormData({ titleEn: '', titleAr: '', size: '', fileUrl: '' });
+    } catch (err) {
+      console.error("Error saving resource: ", err);
+      alert("Failed to save resource.");
+    }
+    setIsSaving(false);
+  };
+
+  const handleDelete = async (id: string, title: string) => {
+    if (window.confirm(`Are you sure you want to remove "${title}"?`)) {
+      try {
+        await deleteDoc(doc(db, 'technical_resources', id));
+      } catch (err) {
+        console.error("Error deleting resource: ", err);
+      }
+    }
+  };
+
+  return (
+    <motion.div 
+      className="resource-section"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <button 
+        onClick={() => navigate('/')} 
+        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: '2rem', padding: 0 }}
+      >
+        <ArrowLeft size={18} />
+        <span>Back to Dashboard</span>
+      </button>
+
+      <header className="page-header" style={{ marginBottom: '2.5rem' }}>
+        <h1 style={{ color: 'var(--text-primary)', fontSize: '2rem', marginBottom: '0.5rem' }}>Technical Resources</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Manage downloadable product catalogs, specifications, and guides.</p>
+      </header>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Loading resources...</div>
+      ) : (
+        <div className="resource-grid">
+          <div className="upload-resource-card" onClick={() => setIsModalOpen(true)}>
+            <UploadCloud size={40} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 600, fontSize: '1.2rem', marginBottom: '0.25rem' }}>Add New Resource</div>
+              <div style={{ fontSize: '0.95rem' }}>Upload PDF, DOCX, XLSX</div>
+            </div>
+          </div>
+
+          {resources.map(resource => (
+            <motion.div 
+              key={resource.id} 
+              className="resource-card"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <div className="resource-info">
+                <div className="resource-title">{resource.titleEn}</div>
+                <div className="resource-meta">
+                  <FileText size={14} />
+                  <span>{resource.size}</span>
+                  <span style={{ margin: '0 0.5rem', color: 'var(--border-color)' }}>|</span>
+                  <span style={{ fontSize: '0.85rem' }}>{resource.titleAr}</span>
+                </div>
+              </div>
+              <div className="resource-actions">
+                <a href={resource.fileUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
+                  <Download size={16} />
+                  <span>Test</span>
+                </a>
+                <button 
+                  className="btn btn-danger" 
+                  onClick={() => handleDelete(resource.id, resource.titleEn)} 
+                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}
+                >
+                  <Trash2 size={16} />
+                  <span>Delete</span>
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div 
+            className="resource-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="resource-modal"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+            >
+              <div className="resource-modal-header">
+                <h2 className="resource-modal-title">Upload Technical Resource</h2>
+                <button className="btn-close" onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSave}>
+                <div className="form-group">
+                  <label>Title (English)</label>
+                  <input type="text" required placeholder="e.g. Safety Products Catalog 2025" value={formData.titleEn} onChange={e => setFormData({...formData, titleEn: e.target.value})} />
+                </div>
+
+                <div className="form-group">
+                  <label>Title (Arabic)</label>
+                  <input type="text" required placeholder="e.g. كتالوج منتجات السلامة 2025" value={formData.titleAr} onChange={e => setFormData({...formData, titleAr: e.target.value})} dir="rtl" />
+                </div>
+
+                <div className="form-group">
+                  <label>Document File</label>
+                  <div className="file-upload-box">
+                    {isUploadingFile ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <Loader2 size={18} className="spin" color="var(--accent-teal)" style={{ animation: 'spin 1s linear infinite' }} /> 
+                        <span style={{ color: 'var(--text-secondary)' }}>Uploading file securely...</span>
+                      </div>
+                    ) : formData.fileUrl ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+                        <FileText size={24} color="var(--accent-teal)" />
+                        <span style={{ fontWeight: 500 }}>File Uploaded ({formData.size})</span>
+                        <button type="button" onClick={() => setFormData({...formData, fileUrl: '', size: ''})} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', marginLeft: '1rem' }}>Remove</button>
+                      </div>
+                    ) : (
+                      <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={handleFileUpload} />
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+                  <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border-color)', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                  <button type="submit" disabled={isSaving || isUploadingFile} style={{ padding: '0.75rem 1.5rem', border: 'none', background: 'var(--accent-teal)', color: 'white', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}>
+                    {isSaving ? 'Saving...' : 'Save Resource'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, FileArchive, FolderOpen } from 'lucide-react';
 import './Sidebar.css';
 
 export const Sidebar: React.FC = () => {
@@ -29,6 +29,18 @@ export const Sidebar: React.FC = () => {
             <NavLink to="/messages" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
               <MessageSquare size={20} />
               <span>Contact Messages</span>
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/projects" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <FolderOpen size={20} />
+              <span>Projects</span>
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/resources" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <FileArchive size={20} />
+              <span>Technical Resources</span>
             </NavLink>
           </li>
         </ul>
