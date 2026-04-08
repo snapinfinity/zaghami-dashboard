@@ -43,6 +43,18 @@ export const Sidebar: React.FC = () => {
               <span>Technical Resources</span>
             </NavLink>
           </li>
+          <li className="nav-item">
+            <NavLink to="/categories" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <LayoutDashboard size={20} />
+              <span>Categories</span>
+            </NavLink>
+          </li>
+          <li className="nav-item">
+            <NavLink to="/products" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+              <FileArchive size={20} />
+              <span>Products</span>
+            </NavLink>
+          </li>
         </ul>
 
         <div className="sidebar-divider"></div>

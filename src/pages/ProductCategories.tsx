@@ -19,12 +19,15 @@ export interface ProductCategory {
   nameAr: string;
   subtitleEn: string;
   subtitleAr: string;
+  descriptionEn?: string;
+  descriptionAr?: string;
   imageUrl: string;
+  heroImageUrl?: string;
   order?: number;
   createdAt?: any;
 }
 
-const EMPTY_FORM = { nameEn: '', nameAr: '', subtitleEn: '', subtitleAr: '', imageUrl: '' };
+const EMPTY_FORM = { nameEn: '', nameAr: '', subtitleEn: '', subtitleAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '', heroImageUrl: '' };
 
 /* ─── Component ──────────────────────────────────────────────────── */
 export const ProductCategories: React.FC = () => {
@@ -38,6 +41,7 @@ export const ProductCategories: React.FC = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+  const [isUploadingHero, setIsUploadingHero] = useState(false);
 
   /* ── Firestore listener ───────────────────────────────────────── */
   useEffect(() => {
@@ -82,6 +86,34 @@ export const ProductCategories: React.FC = () => {
     }
   };
 
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setIsUploadingHero(true);
+    try {
+      const storageRef = ref(storage, `product_categories_hero/${Date.now()}_${file.name}`);
+      const task = uploadBytesResumable(storageRef, file);
+      task.on(
+        'state_changed',
+        null,
+        (err) => {
+          console.error('Hero upload failed:', err);
+          setIsUploadingHero(false);
+          alert('Hero image upload failed.');
+        },
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          setFormData(prev => ({ ...prev, heroImageUrl: url }));
+          setIsUploadingHero(false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      setIsUploadingHero(false);
+      alert('Could not start hero upload.');
+    }
+  };
+
   /* ── Open modal ───────────────────────────────────────────────── */
   const openAdd = () => {
     setEditingId(null);
@@ -96,7 +128,10 @@ export const ProductCategories: React.FC = () => {
       nameAr: cat.nameAr,
       subtitleEn: cat.subtitleEn || '',
       subtitleAr: cat.subtitleAr || '',
-      imageUrl: cat.imageUrl
+      descriptionEn: cat.descriptionEn || '',
+      descriptionAr: cat.descriptionAr || '',
+      imageUrl: cat.imageUrl,
+      heroImageUrl: cat.heroImageUrl || ''
     });
     setIsModalOpen(true);
   };
@@ -127,7 +162,10 @@ export const ProductCategories: React.FC = () => {
           nameAr: formData.nameAr.trim(),
           subtitleEn: formData.subtitleEn.trim(),
           subtitleAr: formData.subtitleAr.trim(),
+          descriptionEn: formData.descriptionEn.trim(),
+          descriptionAr: formData.descriptionAr.trim(),
           imageUrl: formData.imageUrl,
+          heroImageUrl: formData.heroImageUrl,
         });
       } else {
         await addDoc(collection(db, 'product_categories'), {
@@ -135,7 +173,10 @@ export const ProductCategories: React.FC = () => {
           nameAr: formData.nameAr.trim(),
           subtitleEn: formData.subtitleEn.trim(),
           subtitleAr: formData.subtitleAr.trim(),
+          descriptionEn: formData.descriptionEn.trim(),
+          descriptionAr: formData.descriptionAr.trim(),
           imageUrl: formData.imageUrl,
+          heroImageUrl: formData.heroImageUrl,
           createdAt: serverTimestamp(),
         });
       }
@@ -182,7 +223,7 @@ export const ProductCategories: React.FC = () => {
       {/* Page header */}
       <header className="categories-page-header">
         <h1>Product Categories</h1>
-        <p>Manage the six product divisions displayed on the website — with full Arabic support.</p>
+        <p>Manage product divisions displayed on the website — with full Arabic support.</p>
       </header>
 
       {/* Grid */}
@@ -300,6 +341,16 @@ export const ProductCategories: React.FC = () => {
                   />
                 </div>
 
+                {/* Description EN */}
+                <div className="cat-form-group">
+                  <label>Description (English) <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
+                  <textarea
+                    placeholder="Brief description of the category..."
+                    value={formData.descriptionEn}
+                    onChange={e => setFormData(p => ({ ...p, descriptionEn: e.target.value }))}
+                  />
+                </div>
+
                 {/* Name AR */}
                 <div className="cat-form-group">
                   <label>Category Name (Arabic — اسم الفئة)</label>
@@ -325,9 +376,20 @@ export const ProductCategories: React.FC = () => {
                   />
                 </div>
 
+                {/* Description AR */}
+                <div className="cat-form-group">
+                  <label>Description (Arabic — الوصف) <span style={{ opacity: 0.6, fontWeight: 400 }}>— اختياري</span></label>
+                  <textarea
+                    dir="rtl"
+                    placeholder="وصف موجز للفئة..."
+                    value={formData.descriptionAr}
+                    onChange={e => setFormData(p => ({ ...p, descriptionAr: e.target.value }))}
+                  />
+                </div>
+
                 {/* Image */}
                 <div className="cat-form-group">
-                  <label>Category Image</label>
+                  <label>Card Thumbnail Image</label>
                   <div className="cat-image-upload-box">
                     {isUploadingImg ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
@@ -340,7 +402,7 @@ export const ProductCategories: React.FC = () => {
                     ) : formData.imageUrl ? (
                       <div className="cat-image-preview">
                         <img src={formData.imageUrl} alt="Preview" />
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Image uploaded ✓</span>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Thumbnail uploaded ✓</span>
                         <button
                           type="button"
                           onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))}
@@ -361,6 +423,42 @@ export const ProductCategories: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Hero Image */}
+                <div className="cat-form-group">
+                  <label>Hero Image (Details Page) <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
+                  <div className="cat-image-upload-box">
+                    {isUploadingHero ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <Loader2
+                          size={18}
+                          style={{ animation: 'spin 1s linear infinite', color: 'var(--accent-teal)' }}
+                        />
+                        <span style={{ color: 'var(--text-secondary)' }}>Uploading hero image…</span>
+                      </div>
+                    ) : formData.heroImageUrl ? (
+                      <div className="cat-image-preview">
+                        <img src={formData.heroImageUrl} alt="Hero Preview" />
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Hero uploaded ✓</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, heroImageUrl: '' }))}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <UploadCloud size={24} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                          Landscape image recommended for Hero background
+                        </div>
+                        <input type="file" accept="image/*" onChange={handleHeroImageUpload} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Footer */}
                 <div className="cat-modal-footer">
                   <button type="button" className="btn-cancel" onClick={closeModal}>
@@ -369,7 +467,7 @@ export const ProductCategories: React.FC = () => {
                   <button
                     type="submit"
                     className="btn-save-cat"
-                    disabled={isSaving || isUploadingImg}
+                    disabled={isSaving || isUploadingImg || isUploadingHero}
                   >
                     {isSaving ? 'Saving…' : editingId ? 'Update Category' : 'Save Category'}
                   </button>

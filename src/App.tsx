@@ -8,6 +8,7 @@ import { PartnerManagement } from './pages/PartnerManagement';
 import { ProjectManagement } from './pages/ProjectManagement';
 import { TechnicalResources } from './pages/TechnicalResources';
 import { ProductCategories } from './pages/ProductCategories';
+import { ProductManagement } from './pages/ProductManagement';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="projects" element={<ProjectManagement />} />
           <Route path="resources" element={<TechnicalResources />} />
           <Route path="categories" element={<ProductCategories />} />
+          <Route path="products" element={<ProductManagement />} />
         </Route>
       </Routes>
     </Router>
