@@ -182,3 +182,57 @@ input:focus, textarea:focus, select:focus {
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* ══════════════════════════════════════════════
+   Global Responsive Utilities
+   ══════════════════════════════════════════════ */
+
+/* Fluid images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent horizontal scroll */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Shared page wrapper for inner pages */
+.page-wrapper {
+  padding: 3rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  /* Reduce base font sizing */
+  html { font-size: 15px; }
+
+  /* Shared inner page padding */
+  .page-wrapper {
+    padding: 1.5rem 1rem;
+  }
+
+  /* Make all btn groups stack on mobile */
+  .btn-group-mobile {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* Wider tables get horizontal scroll */
+  .table-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  html { font-size: 14px; }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+}

@@ -142,7 +142,22 @@
 }
 
 @media (max-width: 768px) {
+  .project-section {
+    padding: 1.5rem 1rem;
+  }
+
   .project-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .project-img-wrapper {
+    height: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .project-card-title {
+    font-size: 1.2rem;
   }
 }

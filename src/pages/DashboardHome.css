@@ -1,3 +1,7 @@
+/* ════════════════════════════════════════════════════════════
+   Dashboard Home — Responsive
+   ════════════════════════════════════════════════════════════ */
+
 .dashboard-home-simple {
   display: flex;
   flex-direction: column;
@@ -5,15 +9,16 @@
   background-color: var(--bg-primary);
 }
 
+/* ── Hero ─────────────────────────────────────────────────── */
 .dashboard-hero {
   background-color: var(--bg-slate);
-  padding: 4rem 2rem 8rem 2rem;
+  padding: 3.5rem 2rem 7rem;
   color: var(--text-inverse);
   position: relative;
 }
 
 .dashboard-hero-content {
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
@@ -31,9 +36,10 @@
 
 .header-subtitle {
   color: var(--text-inverse-secondary);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
 }
 
+/* ── Logout btn ───────────────────────────────────────────── */
 .logout-btn {
   background: rgba(255, 255, 255, 0.05);
   color: var(--text-inverse);
@@ -44,8 +50,10 @@
   padding: 0.6rem 1.25rem;
   border-radius: var(--radius-md);
   font-weight: 500;
+  font-size: 0.875rem;
   transition: all var(--transition-fast);
   backdrop-filter: blur(4px);
+  white-space: nowrap;
 }
 
 .logout-btn:hover {
@@ -53,30 +61,33 @@
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* ── Nav grid ─────────────────────────────────────────────── */
 .nav-grid-container {
-  max-width: 1200px;
-  margin: -4rem auto 3rem auto;
+  max-width: 1100px;
+  margin: -4rem auto 3rem;
   padding: 0 2rem;
   position: relative;
   z-index: 10;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .nav-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
 }
 
+/* ── Nav card ─────────────────────────────────────────────── */
 .nav-card {
   display: flex;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1.4rem 1.25rem;
   cursor: pointer;
   background-color: var(--bg-secondary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.04);
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
@@ -86,14 +97,14 @@
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 4px;
+  height: 3px;
   background: var(--gradient-brand);
   opacity: 0;
   transition: opacity var(--transition-normal);
 }
 
 .nav-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-md);
 }
 
@@ -104,14 +115,14 @@
 .nav-card-icon {
   background-color: var(--accent-teal-light);
   color: var(--accent-teal);
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-right: 1.25rem;
+  margin-right: 1.1rem;
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
@@ -122,18 +133,22 @@
 
 .nav-card-content {
   flex: 1;
+  min-width: 0;
 }
 
 .nav-card-title {
   color: var(--text-primary);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nav-card-subtitle {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   line-height: 1.4;
 }
 
@@ -141,12 +156,67 @@
   color: #cad5e2;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-left: 1rem;
+  margin-left: 0.75rem;
+  flex-shrink: 0;
   transition: transform var(--transition-normal), color var(--transition-normal);
 }
 
 .nav-card:hover .nav-card-arrow {
   transform: translateX(4px);
   color: var(--accent-teal);
+}
+
+/* ════════════════════════════════════════════════════════════
+   Responsive Breakpoints
+   ════════════════════════════════════════════════════════════ */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .nav-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .dashboard-hero {
+    padding: 2rem 1.25rem 6rem;
+  }
+
+  .header-title {
+    font-size: 1.8rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .nav-grid-container {
+    padding: 0 1rem;
+    margin-top: -3.5rem;
+  }
+
+  .nav-grid {
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+  }
+
+  .nav-card {
+    padding: 1.1rem 1rem;
+  }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+  .header-title {
+    font-size: 1.5rem;
+  }
+
+  .logout-btn span {
+    display: none;
+  }
+
+  .logout-btn {
+    padding: 0.6rem;
+  }
 }

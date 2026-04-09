@@ -4,8 +4,8 @@ import './DashboardLayout.css';
 
 export const DashboardLayout: React.FC = () => {
   return (
-    <div className="dashboard-layout-simple">
-      <main className="main-content-simple">
+    <div className="dashboard-layout">
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

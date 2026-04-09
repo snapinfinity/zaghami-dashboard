@@ -142,3 +142,28 @@
   font-size: 1.5rem;
   color: var(--text-primary);
 }
+
+/* ════════════════════════════════════════
+   Responsive
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .client-section {
+    padding: 1.5rem 1rem;
+  }
+
+  .client-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .client-modal-overlay {
+    align-items: flex-end;
+  }
+
+  .client-modal {
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}

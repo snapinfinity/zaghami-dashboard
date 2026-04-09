@@ -3,13 +3,23 @@ import { motion } from 'framer-motion';
 import { 
   Mail, FileText, 
   Briefcase, Users, FolderOpen, FileArchive, LayoutGrid,
-  LogOut, ChevronRight 
+  LogOut, ChevronRight, ShoppingBag
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import './DashboardHome.css';
 
 export const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const navItems = [
     { title: 'Contact Enquiries', subtitle: 'View and manage customer enquiries', icon: <Mail size={20} />, path: '/messages' },
@@ -19,7 +29,8 @@ export const DashboardHome: React.FC = () => {
     { title: 'Partner Logos', subtitle: 'Manage strategic partner logos', icon: <Briefcase size={20} />, path: '/partners' },
     { title: 'Technical Resources', subtitle: 'Manage product documents', icon: <FileArchive size={20} />, path: '/resources' },
     { title: 'Product Categories', subtitle: 'Manage category names & images (EN + AR)', icon: <LayoutGrid size={20} />, path: '/categories' },
-    { title: 'Products', subtitle: 'Manage individual products', icon: <LayoutGrid size={20} />, path: '/products' }
+    { title: 'Products', subtitle: 'Manage individual products', icon: <LayoutGrid size={20} />, path: '/products' },
+    { title: 'Quote Requests', subtitle: 'View product quote requests from customers', icon: <ShoppingBag size={20} />, path: '/quotes' }
   ];
 
   return (
@@ -32,7 +43,7 @@ export const DashboardHome: React.FC = () => {
       <div className="dashboard-hero">
         <div className="dashboard-hero-content">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-            <button className="logout-btn">
+            <button className="logout-btn" onClick={handleSignOut}>
               <LogOut size={18} />
               <span>Sign Out</span>
             </button>

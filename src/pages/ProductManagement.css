@@ -325,3 +325,58 @@
 .btn-save-prod:hover:not(:disabled) {
   opacity: 0.9;
 }
+
+/* ════════════════════════════════════════
+   Responsive
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .products-section {
+    padding: 1.5rem 1rem;
+  }
+
+  .products-page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .products-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .products-filter select {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .prod-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .prod-modal {
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 92vh;
+  }
+
+  .prod-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .btn-cancel,
+  .btn-save-prod {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .products-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
