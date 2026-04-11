@@ -290,7 +290,6 @@ export const TechnicalResources: React.FC = () => {
             </motion.div>
           </motion.div>
         )}
-        )}
       </AnimatePresence>
 
       <AlertModal 
