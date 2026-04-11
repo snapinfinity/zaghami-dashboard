@@ -6,6 +6,7 @@ import { collection, query, onSnapshot, doc, deleteDoc, addDoc, serverTimestamp 
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './TechnicalResources.css';
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 export interface TechnicalResource {
   id: string;
@@ -25,6 +26,36 @@ export const TechnicalResources: React.FC = () => {
   const [formData, setFormData] = useState({ titleEn: '', titleAr: '', size: '', fileUrl: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'technical_resources'));
@@ -66,7 +97,7 @@ export const TechnicalResources: React.FC = () => {
           (error) => {
             console.error("Upload failed:", error);
             setIsUploadingFile(false);
-            alert("File upload failed. Ensure your Firebase Storage rules allow writing.");
+            showAlert("Upload Failed", "File upload failed. Ensure your Firebase Storage rules allow writing.", "danger");
           },
           async () => {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -77,7 +108,7 @@ export const TechnicalResources: React.FC = () => {
       } catch (err) {
         console.error(err);
         setIsUploadingFile(false);
-        alert("An error occurred starting the file upload.");
+        showAlert("Error", "An error occurred starting the file upload.", "danger");
       }
     }
   };
@@ -85,11 +116,11 @@ export const TechnicalResources: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fileUrl) {
-      alert("Please upload a document file.");
+      showAlert("Missing File", "Please upload a document file.", "warning");
       return;
     }
     if (!formData.titleEn || !formData.titleAr) {
-      alert("Please provide both English and Arabic titles.");
+      showAlert("Missing Title", "Please provide both English and Arabic titles.", "warning");
       return;
     }
     
@@ -101,21 +132,33 @@ export const TechnicalResources: React.FC = () => {
       });
       setIsModalOpen(false);
       setFormData({ titleEn: '', titleAr: '', size: '', fileUrl: '' });
+      showAlert("Success", "Resource saved successfully.", "success");
     } catch (err) {
       console.error("Error saving resource: ", err);
-      alert("Failed to save resource.");
+      showAlert("Error", "Failed to save resource.", "danger");
     }
     setIsSaving(false);
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to remove "${title}"?`)) {
-      try {
-        await deleteDoc(doc(db, 'technical_resources', id));
-      } catch (err) {
-        console.error("Error deleting resource: ", err);
+  const handleDelete = (id: string, title: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Resource',
+      message: `Are you sure you want to remove "${title}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'technical_resources', id));
+          showAlert("Deleted", "Resource has been removed.", "success");
+        } catch (err) {
+          console.error("Error deleting resource: ", err);
+          showAlert("Error", "Failed to delete resource.", "danger");
+        }
       }
-    }
+    });
   };
 
   return (
@@ -247,7 +290,19 @@ export const TechnicalResources: React.FC = () => {
             </motion.div>
           </motion.div>
         )}
+        )}
       </AnimatePresence>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

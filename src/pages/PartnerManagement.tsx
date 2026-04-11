@@ -6,6 +6,7 @@ import { collection, query, onSnapshot, doc, deleteDoc, addDoc, serverTimestamp 
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './ClientManagement.css'; // Re-use the exact same CSS
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 export interface Partner {
   id: string;
@@ -22,6 +23,36 @@ export const PartnerManagement: React.FC = () => {
   const [formData, setFormData] = useState({ logoUrl: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'partners'));
@@ -54,7 +85,7 @@ export const PartnerManagement: React.FC = () => {
           (error) => {
             console.error("Upload failed:", error);
             setIsUploadingImg(false);
-            alert("Image upload failed.");
+            showAlert("Upload Failed", "Image upload failed. Please try again.", "danger");
           },
           async () => {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -65,7 +96,7 @@ export const PartnerManagement: React.FC = () => {
       } catch (err) {
         console.error(err);
         setIsUploadingImg(false);
-        alert("An error occurred starting the upload.");
+        showAlert("Error", "An error occurred starting the upload.", "danger");
       }
     }
   };
@@ -73,7 +104,7 @@ export const PartnerManagement: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.logoUrl) {
-      alert("Please upload a logo.");
+      showAlert("Missing Logo", "Please upload a logo before saving.", "warning");
       return;
     }
     
@@ -85,21 +116,33 @@ export const PartnerManagement: React.FC = () => {
       });
       setIsModalOpen(false);
       setFormData({ logoUrl: '' });
+      showAlert("Success", "Partner logo saved successfully.", "success");
     } catch (err) {
       console.error("Error saving partner: ", err);
-      alert("Failed to save partner.");
+      showAlert("Error", "Failed to save partner.", "danger");
     }
     setIsSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm(`Are you sure you want to remove this partner logo?`)) {
-      try {
-        await deleteDoc(doc(db, 'partners', id));
-      } catch (err) {
-        console.error("Error deleting partner: ", err);
+  const handleDelete = (id: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Partner Logo',
+      message: 'Are you sure you want to remove this partner logo? This action cannot be undone.',
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'partners', id));
+          showAlert("Deleted", "Partner logo has been removed.", "success");
+        } catch (err) {
+          console.error("Error deleting partner: ", err);
+          showAlert("Error", "Failed to delete partner.", "danger");
+        }
       }
-    }
+    });
   };
 
   return (
@@ -211,6 +254,17 @@ export const PartnerManagement: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

@@ -7,6 +7,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './ProjectManagement.css';
 import '../pages/BlogManagement.css'; // Re-use form styles
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 export interface Project {
   id: string;
@@ -45,6 +46,36 @@ export const ProjectManagement: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Project>>(emptyProject);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'projects'));
@@ -97,7 +128,7 @@ export const ProjectManagement: React.FC = () => {
           (error) => {
             console.error("Upload failed:", error);
             setIsUploadingImg(false);
-            alert("Image upload failed.");
+            showAlert("Upload Failed", "Image upload failed.", "danger");
           },
           async () => {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -108,7 +139,7 @@ export const ProjectManagement: React.FC = () => {
       } catch (err) {
         console.error(err);
         setIsUploadingImg(false);
-        alert("An error occurred starting the upload.");
+        showAlert("Error", "An error occurred starting the upload.", "danger");
       }
     }
   };
@@ -117,15 +148,15 @@ export const ProjectManagement: React.FC = () => {
     e.preventDefault();
 
     if (!formData.titleEn?.trim() || !formData.summaryEn?.trim() || !formData.locationEn?.trim()) {
-      alert("Please ensure all English fields (Title, Summary, Location) are filled.");
+      showAlert("Missing Fields", "Please ensure all English fields (Title, Summary, Location) are filled.", "warning");
       return;
     }
     if (!formData.titleAr?.trim() || !formData.summaryAr?.trim() || !formData.locationAr?.trim()) {
-      alert("Arabic layout is compulsory. Please switch to the Arabic layout tab and fill out the fields.");
+      showAlert("Missing Arabic Content", "Arabic layout is compulsory. Please switch to the Arabic layout tab and fill out the fields.", "warning");
       return;
     }
     if (!formData.imageUrl) {
-      alert("Please upload a project cover image.");
+      showAlert("Missing Image", "Please upload a project cover image.", "warning");
       return;
     }
 
@@ -137,21 +168,33 @@ export const ProjectManagement: React.FC = () => {
         await addDoc(collection(db, 'projects'), { ...formData, createdAt: serverTimestamp() });
       }
       handleCloseEditor();
+      showAlert("Success", "Project saved successfully.", "success");
     } catch (err) {
       console.error("Error saving document: ", err);
-      alert("Failed to save project.");
+      showAlert("Error", "Failed to save project.", "danger");
     }
     setIsSaving(false);
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to delete project "${title}"?`)) {
-      try {
-        await deleteDoc(doc(db, 'projects', id));
-      } catch (err) {
-        console.error("Error deleting document: ", err);
+  const handleDelete = (id: string, title: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Project',
+      message: `Are you sure you want to delete project "${title}"? This cannot be undone.`,
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'projects', id));
+          showAlert("Deleted", "Project has been removed.", "success");
+        } catch (err) {
+          console.error("Error deleting document: ", err);
+          showAlert("Error", "Failed to delete project.", "danger");
+        }
       }
-    }
+    });
   };
 
   const renderIcon = (type: string) => {
@@ -363,6 +406,17 @@ export const ProjectManagement: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

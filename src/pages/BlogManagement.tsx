@@ -6,6 +6,7 @@ import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTi
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './BlogManagement.css';
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 export interface Insight {
   id: string;
@@ -54,6 +55,36 @@ export const BlogManagement: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Insight>>(emptyInsight);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'insights'));
@@ -127,7 +158,7 @@ export const BlogManagement: React.FC = () => {
           (error) => {
             console.error("Upload failed:", error);
             setIsUploadingImg(false);
-            alert("Image upload failed. Ensure your Firebase Storage rules allow writing.");
+            showAlert("Upload Failed", "Image upload failed. Ensure your Firebase Storage rules allow writing.", "danger");
           },
           async () => {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -138,7 +169,7 @@ export const BlogManagement: React.FC = () => {
       } catch (err) {
         console.error(err);
         setIsUploadingImg(false);
-        alert("An error occurred starting the upload.");
+        showAlert("Error", "An error occurred starting the upload.", "danger");
       }
     }
   };
@@ -147,11 +178,11 @@ export const BlogManagement: React.FC = () => {
     e.preventDefault();
 
     if (!formData.titleEn?.trim() || !formData.contentEn?.trim()) {
-      alert("Please ensure all English fields (Title, Content) are filled.");
+      showAlert("Missing Fields", "Please ensure all English fields (Title, Content) are filled.", "warning");
       return;
     }
     if (!formData.titleAr?.trim() || !formData.contentAr?.trim()) {
-      alert("Arabic layout is compulsory. Please switch to the Arabic layout tab and fill out the Title and Content.");
+      showAlert("Missing Arabic Content", "Arabic layout is compulsory. Please switch to the Arabic layout tab and fill out the Title and Content.", "warning");
       return;
     }
 
@@ -185,21 +216,33 @@ export const BlogManagement: React.FC = () => {
         });
       }
       handleCloseEditor();
+      showAlert("Success", "Post saved successfully.", "success");
     } catch (err) {
       console.error("Error saving document: ", err);
-      alert("Failed to save post.");
+      showAlert("Error", "Failed to save post.", "danger");
     }
     setIsSaving(false);
   };
 
-  const handleDelete = async (id: string, title: string) => {
-    if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      try {
-        await deleteDoc(doc(db, 'insights', id));
-      } catch (err) {
-        console.error("Error deleting document: ", err);
+  const handleDelete = (id: string, title: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Post',
+      message: `Are you sure you want to delete "${title}"? This cannot be undone.`,
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'insights', id));
+          showAlert("Deleted", "Post has been removed.", "success");
+        } catch (err) {
+          console.error("Error deleting document: ", err);
+          showAlert("Error", "Failed to delete post.", "danger");
+        }
       }
-    }
+    });
   };
 
   const filteredInsights = insights.filter(ins => {
@@ -569,6 +612,17 @@ export const BlogManagement: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

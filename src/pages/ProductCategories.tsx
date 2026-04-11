@@ -11,6 +11,7 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './ProductCategories.css';
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 export interface ProductCategory {
@@ -21,13 +22,22 @@ export interface ProductCategory {
   subtitleAr: string;
   descriptionEn?: string;
   descriptionAr?: string;
+  homepageDescriptionEn?: string;
+  homepageDescriptionAr?: string;
   imageUrl: string;
   heroImageUrl?: string;
+  homepageImage1?: string;
+  homepageImage2?: string;
+  homepageImage3?: string;
   order?: number;
   createdAt?: any;
 }
 
-const EMPTY_FORM = { nameEn: '', nameAr: '', subtitleEn: '', subtitleAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '', heroImageUrl: '' };
+const EMPTY_FORM = { 
+  nameEn: '', nameAr: '', subtitleEn: '', subtitleAr: '', descriptionEn: '', descriptionAr: '', 
+  homepageDescriptionEn: '', homepageDescriptionAr: '', 
+  imageUrl: '', heroImageUrl: '', homepageImage1: '', homepageImage2: '', homepageImage3: '' 
+};
 
 /* ─── Component ──────────────────────────────────────────────────── */
 export const ProductCategories: React.FC = () => {
@@ -42,6 +52,39 @@ export const ProductCategories: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
   const [isUploadingHero, setIsUploadingHero] = useState(false);
+  const [isUploadingHomePageImg1, setIsUploadingHomePageImg1] = useState(false);
+  const [isUploadingHomePageImg2, setIsUploadingHomePageImg2] = useState(false);
+  const [isUploadingHomePageImg3, setIsUploadingHomePageImg3] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   /* ── Firestore listener ───────────────────────────────────────── */
   useEffect(() => {
@@ -71,7 +114,7 @@ export const ProductCategories: React.FC = () => {
         (err) => {
           console.error('Upload failed:', err);
           setIsUploadingImg(false);
-          alert('Image upload failed.');
+          showAlert('Upload Failed', 'Image upload failed.', 'danger');
         },
         async () => {
           const url = await getDownloadURL(task.snapshot.ref);
@@ -82,7 +125,7 @@ export const ProductCategories: React.FC = () => {
     } catch (err) {
       console.error(err);
       setIsUploadingImg(false);
-      alert('Could not start upload.');
+      showAlert('Error', 'Could not start upload.', 'danger');
     }
   };
 
@@ -99,7 +142,7 @@ export const ProductCategories: React.FC = () => {
         (err) => {
           console.error('Hero upload failed:', err);
           setIsUploadingHero(false);
-          alert('Hero image upload failed.');
+          showAlert('Upload Failed', 'Hero image upload failed.', 'danger');
         },
         async () => {
           const url = await getDownloadURL(task.snapshot.ref);
@@ -110,7 +153,39 @@ export const ProductCategories: React.FC = () => {
     } catch (err) {
       console.error(err);
       setIsUploadingHero(false);
-      alert('Could not start hero upload.');
+      showAlert('Error', 'Could not start hero upload.', 'danger');
+    }
+  };
+
+  const handleHomepageImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    imageKey: 'homepageImage1' | 'homepageImage2' | 'homepageImage3',
+    setUploadingState: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setUploadingState(true);
+    try {
+      const storageRef = ref(storage, `product_categories_homepage/${Date.now()}_${file.name}`);
+      const task = uploadBytesResumable(storageRef, file);
+      task.on(
+        'state_changed',
+        null,
+        (err) => {
+          console.error(`Homepage image upload failed:`, err);
+          setUploadingState(false);
+          showAlert('Upload Failed', 'Homepage image upload failed.', 'danger');
+        },
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          setFormData(prev => ({ ...prev, [imageKey]: url }));
+          setUploadingState(false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      setUploadingState(false);
+      showAlert('Error', 'Could not start upload.', 'danger');
     }
   };
 
@@ -130,8 +205,13 @@ export const ProductCategories: React.FC = () => {
       subtitleAr: cat.subtitleAr || '',
       descriptionEn: cat.descriptionEn || '',
       descriptionAr: cat.descriptionAr || '',
+      homepageDescriptionEn: cat.homepageDescriptionEn || '',
+      homepageDescriptionAr: cat.homepageDescriptionAr || '',
       imageUrl: cat.imageUrl,
-      heroImageUrl: cat.heroImageUrl || ''
+      heroImageUrl: cat.heroImageUrl || '',
+      homepageImage1: cat.homepageImage1 || '',
+      homepageImage2: cat.homepageImage2 || '',
+      homepageImage3: cat.homepageImage3 || ''
     });
     setIsModalOpen(true);
   };
@@ -146,57 +226,69 @@ export const ProductCategories: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nameEn.trim() || !formData.nameAr.trim()) {
-      alert('Please provide both English and Arabic names.');
+      showAlert('Missing Names', 'Please provide both English and Arabic names.', 'warning');
       return;
     }
     if (!formData.imageUrl) {
-      alert('Please upload a category image.');
+      showAlert('Missing Image', 'Please upload a category image.', 'warning');
       return;
     }
 
     setIsSaving(true);
     try {
+      const categoryData = {
+        nameEn: formData.nameEn.trim(),
+        nameAr: formData.nameAr.trim(),
+        subtitleEn: formData.subtitleEn.trim(),
+        subtitleAr: formData.subtitleAr.trim(),
+        descriptionEn: formData.descriptionEn.trim(),
+        descriptionAr: formData.descriptionAr.trim(),
+        homepageDescriptionEn: formData.homepageDescriptionEn.trim(),
+        homepageDescriptionAr: formData.homepageDescriptionAr.trim(),
+        imageUrl: formData.imageUrl,
+        heroImageUrl: formData.heroImageUrl,
+        homepageImage1: formData.homepageImage1,
+        homepageImage2: formData.homepageImage2,
+        homepageImage3: formData.homepageImage3,
+      };
+
       if (editingId) {
-        await updateDoc(doc(db, 'product_categories', editingId), {
-          nameEn: formData.nameEn.trim(),
-          nameAr: formData.nameAr.trim(),
-          subtitleEn: formData.subtitleEn.trim(),
-          subtitleAr: formData.subtitleAr.trim(),
-          descriptionEn: formData.descriptionEn.trim(),
-          descriptionAr: formData.descriptionAr.trim(),
-          imageUrl: formData.imageUrl,
-          heroImageUrl: formData.heroImageUrl,
-        });
+        await updateDoc(doc(db, 'product_categories', editingId), categoryData);
       } else {
         await addDoc(collection(db, 'product_categories'), {
-          nameEn: formData.nameEn.trim(),
-          nameAr: formData.nameAr.trim(),
-          subtitleEn: formData.subtitleEn.trim(),
-          subtitleAr: formData.subtitleAr.trim(),
-          descriptionEn: formData.descriptionEn.trim(),
-          descriptionAr: formData.descriptionAr.trim(),
-          imageUrl: formData.imageUrl,
-          heroImageUrl: formData.heroImageUrl,
+          ...categoryData,
           createdAt: serverTimestamp(),
         });
       }
       closeModal();
+      showAlert('Success', 'Category saved successfully.', 'success');
     } catch (err) {
       console.error('Error saving category:', err);
-      alert('Failed to save category.');
+      showAlert('Error', 'Failed to save category.', 'danger');
     }
     setIsSaving(false);
   };
 
   /* ── Delete ───────────────────────────────────────────────────── */
-  const handleDelete = async (cat: ProductCategory) => {
-    if (!window.confirm(`Delete category "${cat.nameEn}"?`)) return;
-    try {
-      await deleteDoc(doc(db, 'product_categories', cat.id));
-    } catch (err) {
-      console.error('Error deleting category:', err);
-      alert('Failed to delete category.');
-    }
+  const handleDelete = (cat: ProductCategory) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Category',
+      message: `Are you sure you want to delete category "${cat.nameEn}"?`,
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'product_categories', cat.id));
+          showAlert('Deleted', 'Category has been deleted.', 'success');
+        } catch (err) {
+          console.error('Error deleting category:', err);
+          showAlert('Error', 'Failed to delete category.', 'danger');
+        }
+      }
+    });
   };
 
   /* ── Render ───────────────────────────────────────────────────── */
@@ -387,6 +479,32 @@ export const ProductCategories: React.FC = () => {
                   />
                 </div>
 
+                <hr style={{ borderColor: 'var(--border-color)', margin: '1rem 0' }} />
+                <h3 className="cat-modal-section-title" style={{ fontSize: '1.05rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+                  Homepage Content
+                </h3>
+
+                {/* Homepage Description EN */}
+                <div className="cat-form-group">
+                  <label>Homepage Description (English) <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
+                  <textarea
+                    placeholder="Brief description for the homepage..."
+                    value={formData.homepageDescriptionEn}
+                    onChange={e => setFormData(p => ({ ...p, homepageDescriptionEn: e.target.value }))}
+                  />
+                </div>
+
+                {/* Homepage Description AR */}
+                <div className="cat-form-group">
+                  <label>Homepage Description (Arabic — وصف الصفحة الرئيسية) <span style={{ opacity: 0.6, fontWeight: 400 }}>— اختياري</span></label>
+                  <textarea
+                    dir="rtl"
+                    placeholder="وصف موجز للصفحة الرئيسية..."
+                    value={formData.homepageDescriptionAr}
+                    onChange={e => setFormData(p => ({ ...p, homepageDescriptionAr: e.target.value }))}
+                  />
+                </div>
+
                 {/* Image */}
                 <div className="cat-form-group">
                   <label>Card Thumbnail Image</label>
@@ -459,6 +577,107 @@ export const ProductCategories: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Homepage Images */}
+                <div className="cat-form-group">
+                  <label>Homepage Images <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional (up to 3)</span></label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    
+                    {/* Image 1 */}
+                    <div className="cat-image-upload-box" style={{ padding: '1rem', minHeight: '120px' }}>
+                      {isUploadingHomePageImg1 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent-teal)' }} />
+                        </div>
+                      ) : formData.homepageImage1 ? (
+                        <div className="cat-image-preview">
+                          <img src={formData.homepageImage1} alt="Home 1" style={{ maxHeight: '80px', objectFit: 'cover' }} />
+                          <button
+                            type="button"
+                            onClick={() => setFormData(p => ({ ...p, homepageImage1: '' }))}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', marginTop: '0.5rem' }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative' }}>
+                          <UploadCloud size={20} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Image 1</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                            onChange={(e) => handleHomepageImageUpload(e, 'homepageImage1', setIsUploadingHomePageImg1)} 
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Image 2 */}
+                    <div className="cat-image-upload-box" style={{ padding: '1rem', minHeight: '120px' }}>
+                      {isUploadingHomePageImg2 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent-teal)' }} />
+                        </div>
+                      ) : formData.homepageImage2 ? (
+                        <div className="cat-image-preview">
+                          <img src={formData.homepageImage2} alt="Home 2" style={{ maxHeight: '80px', objectFit: 'cover' }} />
+                          <button
+                            type="button"
+                            onClick={() => setFormData(p => ({ ...p, homepageImage2: '' }))}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', marginTop: '0.5rem' }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative' }}>
+                          <UploadCloud size={20} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Image 2</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                            onChange={(e) => handleHomepageImageUpload(e, 'homepageImage2', setIsUploadingHomePageImg2)} 
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Image 3 */}
+                    <div className="cat-image-upload-box" style={{ padding: '1rem', minHeight: '120px' }}>
+                      {isUploadingHomePageImg3 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite', color: 'var(--accent-teal)' }} />
+                        </div>
+                      ) : formData.homepageImage3 ? (
+                        <div className="cat-image-preview">
+                          <img src={formData.homepageImage3} alt="Home 3" style={{ maxHeight: '80px', objectFit: 'cover' }} />
+                          <button
+                            type="button"
+                            onClick={() => setFormData(p => ({ ...p, homepageImage3: '' }))}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', marginTop: '0.5rem' }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', position: 'relative' }}>
+                          <UploadCloud size={20} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Image 3</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                            onChange={(e) => handleHomepageImageUpload(e, 'homepageImage3', setIsUploadingHomePageImg3)} 
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+
                 {/* Footer */}
                 <div className="cat-modal-footer">
                   <button type="button" className="btn-cancel" onClick={closeModal}>
@@ -467,7 +686,7 @@ export const ProductCategories: React.FC = () => {
                   <button
                     type="submit"
                     className="btn-save-cat"
-                    disabled={isSaving || isUploadingImg || isUploadingHero}
+                    disabled={isSaving || isUploadingImg || isUploadingHero || isUploadingHomePageImg1 || isUploadingHomePageImg2 || isUploadingHomePageImg3}
                   >
                     {isSaving ? 'Saving…' : editingId ? 'Update Category' : 'Save Category'}
                   </button>
@@ -477,6 +696,17 @@ export const ProductCategories: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

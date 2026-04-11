@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { Lock, Mail, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import './Login.css';
 
 export const Login: React.FC = () => {
@@ -51,10 +51,7 @@ export const Login: React.FC = () => {
       <div className="login-card">
         {/* Branding */}
         <div className="login-header">
-          <div className="login-logo-icon">
-            <ShieldCheck size={28} color="#fff" />
-          </div>
-          <h1 className="login-brand">ZAGHAMI</h1>
+          <img src="/images/logo.png" alt="Zaghami Logo" className="login-logo-image" />
           <p className="login-subtitle">Admin Dashboard</p>
         </div>
 
@@ -110,9 +107,6 @@ export const Login: React.FC = () => {
           </button>
         </form>
 
-        <p className="login-footer-note">
-          Zaghami Group · Restricted Access
-        </p>
       </div>
     </div>
   );

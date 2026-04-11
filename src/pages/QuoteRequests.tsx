@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import './QuoteRequests.css';
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 type QuoteStatus = 'Pending' | 'Reviewed' | 'Fulfilled';
 type FilterType = 'All' | 'Pending' | 'Reviewed' | 'Fulfilled';
@@ -82,6 +83,36 @@ export const QuoteRequests: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('All');
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -171,12 +202,26 @@ export const QuoteRequests: React.FC = () => {
     catch (err) { console.error('Could not update status:', err); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Permanently delete this quote request?')) return;
-    try {
-      await deleteDoc(doc(db, 'quote_requests', id));
-      if (expandedId === id) setExpandedId(null);
-    } catch (err) { console.error('Could not delete:', err); }
+  const handleDelete = (id: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Quote Request',
+      message: 'Are you sure you want to permanently delete this quote request?',
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'quote_requests', id));
+          if (expandedId === id) setExpandedId(null);
+          showAlert('Deleted', 'Quote request has been permanently deleted.', 'success');
+        } catch (err) {
+          console.error('Could not delete:', err);
+          showAlert('Error', 'Failed to delete quote request.', 'danger');
+        }
+      }
+    });
   };
 
   const filtered = quotes.filter(q => filter === 'All' || q.status === filter);
@@ -423,6 +468,17 @@ export const QuoteRequests: React.FC = () => {
           })
         )}
       </div>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

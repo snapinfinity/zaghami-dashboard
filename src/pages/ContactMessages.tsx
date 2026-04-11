@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import './ContactMessages.css';
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 type MessageStatus = 'Unresolved' | 'Resolved';
 type FilterType = 'All Enquiries' | 'Unresolved' | 'Resolved';
@@ -31,6 +32,36 @@ export const ContactMessages: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('All Enquiries');
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   // Fetch from Firebase
   useEffect(() => {
@@ -126,14 +157,25 @@ export const ContactMessages: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this enquiry definitively?')) {
-      try {
-        await deleteDoc(doc(db, 'inquiries', id));
-      } catch (err) {
-        console.error("Could not delete message", err);
+  const handleDelete = (id: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Enquiry',
+      message: 'Are you sure you want to delete this enquiry definitively?',
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'inquiries', id));
+          showAlert("Deleted", "Enquiry has been removed.", "success");
+        } catch (err) {
+          console.error("Could not delete message", err);
+          showAlert("Error", "Could not delete message.", "danger");
+        }
       }
-    }
+    });
   };
 
   const filteredMessages = messages.filter(msg => {
@@ -288,6 +330,17 @@ export const ContactMessages: React.FC = () => {
           })
         )}
       </div>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

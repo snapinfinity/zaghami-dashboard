@@ -12,6 +12,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './ProductManagement.css';
 import type { ProductCategory } from './ProductCategories';
+import { AlertModal, type AlertType } from '../components/AlertModal';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 export interface Product {
@@ -43,6 +44,36 @@ export const ProductManagement: React.FC = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    confirmText?: string;
+    showCancel?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, isOpen: false }));
+
+  const showAlert = (title: string, message: string, type: AlertType = 'info') => {
+    setAlertConfig({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmText: 'OK',
+      showCancel: false,
+      onConfirm: closeAlert
+    });
+  };
 
   /* ── Firestore listener ───────────────────────────────────────── */
   useEffect(() => {
@@ -83,7 +114,7 @@ export const ProductManagement: React.FC = () => {
         (err) => {
           console.error('Upload failed:', err);
           setIsUploadingImg(false);
-          alert('Image upload failed.');
+          showAlert('Upload Failed', 'Image upload failed.', 'danger');
         },
         async () => {
           const url = await getDownloadURL(task.snapshot.ref);
@@ -94,7 +125,7 @@ export const ProductManagement: React.FC = () => {
     } catch (err) {
       console.error(err);
       setIsUploadingImg(false);
-      alert('Could not start upload.');
+      showAlert('Error', 'Could not start upload.', 'danger');
     }
   };
 
@@ -131,15 +162,15 @@ export const ProductManagement: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.categoryId) {
-      alert('Please select a parent category.');
+      showAlert('Missing Category', 'Please select a parent category.', 'warning');
       return;
     }
     if (!formData.nameEn.trim() || !formData.nameAr.trim()) {
-      alert('Please provide both English and Arabic names.');
+      showAlert('Missing Names', 'Please provide both English and Arabic names.', 'warning');
       return;
     }
     if (!formData.imageUrl) {
-      alert('Please upload a product image.');
+      showAlert('Missing Image', 'Please upload a product image.', 'warning');
       return;
     }
 
@@ -163,22 +194,34 @@ export const ProductManagement: React.FC = () => {
         });
       }
       closeModal();
+      showAlert('Success', 'Product saved successfully.', 'success');
     } catch (err) {
       console.error('Error saving product:', err);
-      alert('Failed to save product.');
+      showAlert('Error', 'Failed to save product.', 'danger');
     }
     setIsSaving(false);
   };
 
   /* ── Delete ───────────────────────────────────────────────────── */
-  const handleDelete = async (prod: Product) => {
-    if (!window.confirm(`Delete product "${prod.nameEn}"?`)) return;
-    try {
-      await deleteDoc(doc(db, 'products', prod.id));
-    } catch (err) {
-      console.error('Error deleting product:', err);
-      alert('Failed to delete product.');
-    }
+  const handleDelete = (prod: Product) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Product',
+      message: `Are you sure you want to delete product "${prod.nameEn}"?`,
+      confirmText: 'Delete',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          await deleteDoc(doc(db, 'products', prod.id));
+          showAlert('Deleted', 'Product has been deleted.', 'success');
+        } catch (err) {
+          console.error('Error deleting product:', err);
+          showAlert('Error', 'Failed to delete product.', 'danger');
+        }
+      }
+    });
   };
 
   /* ── Render ───────────────────────────────────────────────────── */
@@ -431,6 +474,17 @@ export const ProductManagement: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        confirmText={alertConfig.confirmText}
+        showCancel={alertConfig.showCancel}
+        onConfirm={alertConfig.onConfirm}
+        onCancel={closeAlert}
+      />
     </motion.div>
   );
 };

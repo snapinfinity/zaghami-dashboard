@@ -1,0 +1,132 @@
+.alert-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.alert-modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.alert-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+
+.icon-container.danger { background: rgba(239, 68, 68, 0.15); }
+.icon-container.warning { background: rgba(245, 158, 11, 0.15); }
+.icon-container.success { background: rgba(16, 185, 129, 0.15); }
+.icon-container.info { background: rgba(14, 165, 233, 0.15); } /* Zaghami accent color */
+
+.alert-icon.danger { color: #ef4444; }
+.alert-icon.warning { color: #f59e0b; }
+.alert-icon.success { color: #10b981; }
+.alert-icon.info { color: #0ea5e9; } /* Zaghami accent color */
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.alert-modal-body h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.alert-modal-body p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.alert-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.alert-btn {
+  padding: 0.6rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert-btn.cancel {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.alert-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.alert-btn.confirm {
+  border: none;
+  color: white;
+}
+
+.alert-btn.confirm.danger { background: #ef4444; }
+.alert-btn.confirm.danger:hover { background: #dc2626; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
+
+.alert-btn.confirm.warning { background: #f59e0b; }
+.alert-btn.confirm.warning:hover { background: #d97706; box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+
+.alert-btn.confirm.success { background: #10b981; }
+.alert-btn.confirm.success:hover { background: #059669; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+
+.alert-btn.confirm.info { background: #0ea5e9; }
+.alert-btn.confirm.info:hover { background: #0284c7; box-shadow: 0 0 10px rgba(14, 165, 233, 0.3); }

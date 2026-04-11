@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Mail, FileText, 
   Briefcase, Users, FolderOpen, FileArchive, LayoutGrid,
@@ -13,7 +13,9 @@ import './DashboardHome.css';
 export const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleSignOut = async () => {
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+
+  const confirmSignOut = async () => {
     try {
       await signOut(auth);
     } catch (error) {
@@ -43,7 +45,7 @@ export const DashboardHome: React.FC = () => {
       <div className="dashboard-hero">
         <div className="dashboard-hero-content">
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-            <button className="logout-btn" onClick={handleSignOut}>
+            <button className="logout-btn" onClick={() => setShowSignOutModal(true)}>
               <LogOut size={18} />
               <span>Sign Out</span>
             </button>
@@ -82,6 +84,40 @@ export const DashboardHome: React.FC = () => {
           ))}
         </div>
       </div>
+      <AnimatePresence>
+        {showSignOutModal && (
+          <div className="signout-modal-overlay">
+            <motion.div 
+              className="signout-modal"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="signout-modal-icon-wrapper">
+                <LogOut size={28} className="signout-modal-icon" />
+              </div>
+              <h3 className="signout-modal-title">Sign Out</h3>
+              <p className="signout-modal-desc">Are you sure you want to sign out of the admin dashboard?</p>
+              
+              <div className="signout-modal-actions">
+                <button 
+                  className="btn-cancel-signout" 
+                  onClick={() => setShowSignOutModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="btn-confirm-signout" 
+                  onClick={confirmSignOut}
+                >
+                  Yes, Sign Out
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
