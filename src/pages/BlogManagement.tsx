@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Calendar, Clock, ArrowRight, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
@@ -43,14 +43,28 @@ const emptyInsight: Partial<Insight> = {
 
 export const BlogManagement: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('All Categories');
   const [filterStatus, setFilterStatus] = useState('All Status');
   
   // Editor State
-  // View Router State
   const [viewMode, setViewMode] = useState<'LIST' | 'EDIT' | 'VIEW'>('LIST');
+
+  // Handle browser back navigation based on URL query
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode');
+    if (mode === 'edit') {
+      setViewMode('EDIT');
+    } else if (mode === 'view') {
+      setViewMode('VIEW');
+    } else {
+      setViewMode('LIST');
+    }
+  }, [location.search]);
+
   const [currentLang, setCurrentLang] = useState<'EN' | 'AR'>('EN');
   const [formData, setFormData] = useState<Partial<Insight>>(emptyInsight);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,17 +128,17 @@ export const BlogManagement: React.FC = () => {
       });
     }
     setCurrentLang('EN');
-    setViewMode('EDIT');
+    navigate('?mode=edit');
   };
 
   const handleOpenView = (insight: Insight) => {
     setFormData(insight);
-    setViewMode('VIEW');
+    navigate('?mode=view');
   };
 
   const handleCloseEditor = () => {
-    setViewMode('LIST');
     setFormData(emptyInsight);
+    navigate(location.pathname);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -422,17 +436,17 @@ export const BlogManagement: React.FC = () => {
             className="editor-container panel"
           >
             <div className="editor-header" style={{ marginBottom: 0, borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>
-               <button onClick={() => setViewMode('LIST')} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+               <button onClick={() => handleCloseEditor()} className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                  <ArrowLeft size={16} /> Back to List
                </button>
                <div style={{ display: 'flex', gap: '1rem' }}>
-                 <button onClick={() => setViewMode('EDIT')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                 <button onClick={() => navigate('?mode=edit')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                    <Edit2 size={16} /> Edit Post
                  </button>
                  <button onClick={() => {
                    if (formData.id) {
                      handleDelete(formData.id, formData.titleEn!);
-                     setViewMode('LIST');
+                     navigate(location.pathname);
                    }
                  }} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#fef2f2', color: '#ef4444', border: '1px solid #fca5a5' }}>
                    <Trash2 size={16} /> Delete Post
@@ -460,7 +474,6 @@ export const BlogManagement: React.FC = () => {
                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{formData.publishedDate} • {formData.readTime}</span>
                   </div>
                   <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.2 }}>{formData.titleEn}</h1>
-                  <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '2rem', borderLeft: '4px solid var(--border-color)', paddingLeft: '1rem', fontStyle: 'italic' }}>{formData.summaryEn}</p>
                   <div style={{ color: 'var(--text-primary)', lineHeight: 1.8, fontSize: '1.05rem', whiteSpace: 'pre-wrap' }}>
                     {formData.contentEn || <span style={{ color: 'var(--text-secondary)' }}>No English content written yet.</span>}
                   </div>
@@ -472,7 +485,6 @@ export const BlogManagement: React.FC = () => {
                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{formData.publishedDate} • {formData.readTime}</span>
                   </div>
                   <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.2, fontFamily: 'Arial, sans-serif' }}>{formData.titleAr || 'بدون عنوان'}</h1>
-                  <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '2rem', borderRight: '4px solid var(--border-color)', paddingRight: '1rem', fontStyle: 'italic', fontFamily: 'Arial, sans-serif' }}>{formData.summaryAr}</p>
                   <div style={{ color: 'var(--text-primary)', lineHeight: 1.8, fontSize: '1.05rem', whiteSpace: 'pre-wrap', fontFamily: 'Arial, sans-serif' }}>
                     {formData.contentAr || <span style={{ color: 'var(--text-secondary)' }}>لا يوجد محتوى عربي بعد.</span>}
                   </div>

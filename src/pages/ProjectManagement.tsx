@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Beaker, Zap, Building, Droplets } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
@@ -12,6 +12,7 @@ import { AlertModal, type AlertType } from '../components/AlertModal';
 export interface Project {
   id: string;
   clientName: string;
+  clientNameAr?: string;
   projectValue: string;
   imageUrl: string;
   iconType: string;
@@ -29,6 +30,7 @@ export interface Project {
 
 const emptyProject: Partial<Project> = {
   clientName: '',
+  clientNameAr: '',
   projectValue: '',
   imageUrl: '',
   iconType: 'Chemical',
@@ -38,10 +40,22 @@ const emptyProject: Partial<Project> = {
 
 export const ProjectManagement: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [viewMode, setViewMode] = useState<'LIST' | 'EDIT'>('LIST');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const mode = params.get('mode');
+    if (mode === 'edit') {
+      setViewMode('EDIT');
+    } else {
+      setViewMode('LIST');
+    }
+  }, [location.search]);
+
   const [currentLang, setCurrentLang] = useState<'EN' | 'AR'>('EN');
   const [formData, setFormData] = useState<Partial<Project>>(emptyProject);
   const [isSaving, setIsSaving] = useState(false);
@@ -101,12 +115,12 @@ export const ProjectManagement: React.FC = () => {
       setFormData(emptyProject);
     }
     setCurrentLang('EN');
-    setViewMode('EDIT');
+    navigate('?mode=edit');
   };
 
   const handleCloseEditor = () => {
-    setViewMode('LIST');
     setFormData(emptyProject);
+    navigate(location.pathname);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -147,11 +161,11 @@ export const ProjectManagement: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.titleEn?.trim() || !formData.summaryEn?.trim() || !formData.locationEn?.trim()) {
-      showAlert("Missing Fields", "Please ensure all English fields (Title, Summary, Location) are filled.", "warning");
+    if (!formData.titleEn?.trim() || !formData.summaryEn?.trim() || !formData.locationEn?.trim() || !formData.clientName?.trim()) {
+      showAlert("Missing Fields", "Please ensure all English fields (Title, Client, Summary, Location) are filled.", "warning");
       return;
     }
-    if (!formData.titleAr?.trim() || !formData.summaryAr?.trim() || !formData.locationAr?.trim()) {
+    if (!formData.titleAr?.trim() || !formData.summaryAr?.trim() || !formData.locationAr?.trim() || !formData.clientNameAr?.trim()) {
       showAlert("Missing Arabic Content", "Arabic layout is compulsory. Please switch to the Arabic layout tab and fill out the fields.", "warning");
       return;
     }
@@ -256,10 +270,6 @@ export const ProjectManagement: React.FC = () => {
                 <h3 className="section-label">Global Configuration</h3>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>Client / Company Name</label>
-                    <input type="text" name="clientName" value={formData.clientName || ''} onChange={handleChange} placeholder="e.g. SABIC" required />
-                  </div>
-                  <div className="form-group">
                     <label>Project Value</label>
                     <input type="text" name="projectValue" value={formData.projectValue || ''} onChange={handleChange} placeholder="e.g. $4.1M" required />
                   </div>
@@ -305,6 +315,18 @@ export const ProjectManagement: React.FC = () => {
                 </div>
 
                 <div className={`localized-fields ${currentLang === 'AR' ? 'rtl-mode' : ''}`}>
+                  <div className="form-group full-width">
+                    <label>{currentLang === 'EN' ? 'Client / Company Name' : 'Client / Company Name (Arabic)'}</label>
+                    <input 
+                      type="text" 
+                      name={currentLang === 'EN' ? 'clientName' : 'clientNameAr'} 
+                      value={(currentLang === 'EN' ? formData.clientName : formData.clientNameAr) || ''} 
+                      onChange={handleChange} 
+                      className={currentLang === 'AR' ? 'rtl-input' : ''}
+                      placeholder={currentLang === 'EN' ? 'e.g. SABIC' : ''}
+                      required 
+                    />
+                  </div>
                   <div className="form-group full-width">
                     <label>{currentLang === 'EN' ? 'Project Title' : 'Project Title (Arabic)'}</label>
                     <input 
