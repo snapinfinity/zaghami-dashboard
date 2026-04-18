@@ -11,13 +11,38 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './ProductManagement.css';
-import type { ProductCategory } from './ProductCategories';
+import type { ProductCategory, SubcategoryNode } from './ProductCategories';
 import { AlertModal, type AlertType } from '../components/AlertModal';
+
+/* ─── Helpers ─────────────────────────────────────────────────────── */
+/** Flatten a subcategory tree into { id, label, depth } entries */
+const flattenSubcats = (
+  nodes: SubcategoryNode[],
+  depth = 0
+): { id: string; labelEn: string; labelAr: string; depth: number }[] => {
+  const result: { id: string; labelEn: string; labelAr: string; depth: number }[] = [];
+  for (const node of nodes) {
+    result.push({ id: node.id, labelEn: node.nameEn, labelAr: node.nameAr, depth });
+    result.push(...flattenSubcats(node.children, depth + 1));
+  }
+  return result;
+};
+
+/** Find a subcategory name anywhere in a tree */
+const findSubcatName = (nodes: SubcategoryNode[], id: string): string => {
+  for (const node of nodes) {
+    if (node.id === id) return node.nameEn;
+    const found = findSubcatName(node.children, id);
+    if (found) return found;
+  }
+  return '';
+};
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 export interface Product {
   id: string;
   categoryId: string;
+  subcategoryId?: string;
   nameEn: string;
   nameAr: string;
   descriptionEn: string;
@@ -26,7 +51,7 @@ export interface Product {
   createdAt?: any;
 }
 
-const EMPTY_FORM = { categoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '' };
+const EMPTY_FORM = { categoryId: '', subcategoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '' };
 
 /* ─── Component ──────────────────────────────────────────────────── */
 export const ProductManagement: React.FC = () => {
@@ -100,6 +125,21 @@ export const ProductManagement: React.FC = () => {
     return categories.find(c => c.id === categoryId)?.nameEn || 'Unknown Category';
   };
 
+  /** Get the flattened subcategory list for the currently selected category */
+  const availableSubcats = useMemo(() => {
+    const cat = categories.find(c => c.id === formData.categoryId);
+    if (!cat?.subcategories?.length) return [];
+    return flattenSubcats(cat.subcategories);
+  }, [categories, formData.categoryId]);
+
+  /** Resolve subcategory name for display on a product card */
+  const getSubcatName = (prod: Product): string => {
+    if (!prod.subcategoryId) return '';
+    const cat = categories.find(c => c.id === prod.categoryId);
+    if (!cat?.subcategories) return '';
+    return findSubcatName(cat.subcategories, prod.subcategoryId);
+  };
+
   /* ── Image upload ─────────────────────────────────────────────── */
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0]) return;
@@ -143,6 +183,7 @@ export const ProductManagement: React.FC = () => {
     setEditingId(prod.id);
     setFormData({
       categoryId: prod.categoryId,
+      subcategoryId: prod.subcategoryId || '',
       nameEn: prod.nameEn,
       nameAr: prod.nameAr,
       descriptionEn: prod.descriptionEn || '',
@@ -176,13 +217,14 @@ export const ProductManagement: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const dataToSave = {
+      const dataToSave: Record<string, any> = {
         categoryId: formData.categoryId,
         nameEn: formData.nameEn.trim(),
         nameAr: formData.nameAr.trim(),
         descriptionEn: formData.descriptionEn.trim(),
         descriptionAr: formData.descriptionAr.trim(),
         imageUrl: formData.imageUrl,
+        subcategoryId: formData.subcategoryId || '',
       };
 
       if (editingId) {
@@ -307,7 +349,12 @@ export const ProductManagement: React.FC = () => {
 
                   {/* Info */}
                   <div className="product-card-body">
-                    <div className="product-card-category">{getCategoryName(prod.categoryId)}</div>
+                    <div className="product-card-category">
+                      {getCategoryName(prod.categoryId)}
+                      {getSubcatName(prod) && (
+                        <span className="product-card-subcat"> › {getSubcatName(prod)}</span>
+                      )}
+                    </div>
                     <div className="product-card-title-en">{prod.nameEn}</div>
                     <div className="product-card-desc-en">{prod.descriptionEn}</div>
                     <div className="product-card-title-ar">{prod.nameAr}</div>
@@ -365,7 +412,7 @@ export const ProductManagement: React.FC = () => {
                   <select
                     required
                     value={formData.categoryId}
-                    onChange={e => setFormData(p => ({ ...p, categoryId: e.target.value }))}
+                    onChange={e => setFormData(p => ({ ...p, categoryId: e.target.value, subcategoryId: '' }))}
                   >
                     <option value="" disabled>Select a category</option>
                     {categories.map(c => (
@@ -373,6 +420,24 @@ export const ProductManagement: React.FC = () => {
                     ))}
                   </select>
                 </div>
+
+                {/* Subcategory Selection (only shown if category has subcategories) */}
+                {availableSubcats.length > 0 && (
+                  <div className="prod-form-group">
+                    <label>Subcategory <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
+                    <select
+                      value={formData.subcategoryId}
+                      onChange={e => setFormData(p => ({ ...p, subcategoryId: e.target.value }))}
+                    >
+                      <option value="">— None (top-level) —</option>
+                      {availableSubcats.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {'\u00A0'.repeat(s.depth * 4)}{s.depth > 0 ? '↳ ' : ''}{s.labelEn}{s.labelAr ? ` / ${s.labelAr}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Name EN */}
                 <div className="prod-form-group">

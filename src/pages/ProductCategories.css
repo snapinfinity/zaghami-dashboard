@@ -101,12 +101,27 @@
   font-family: 'Tajawal', 'Cairo', sans-serif;
 }
 
+/* Subcategory badge on card */
+.category-subcat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.12);
+  color: var(--accent-teal);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .category-card-actions {
   display: flex;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
   border-top: 1px solid var(--border-color);
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 /* ── Upload / Add Card ───────────────────── */
@@ -299,7 +314,8 @@
 }
 
 /* ── Action buttons inside card ──────────── */
-.cat-btn-edit {
+.cat-btn-edit,
+.cat-btn-subcat {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -316,6 +332,16 @@
 .cat-btn-edit:hover {
   border-color: var(--accent-teal);
   color: var(--accent-teal);
+}
+
+.cat-btn-subcat {
+  color: #8b5cf6;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.cat-btn-subcat:hover {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.08);
 }
 
 .cat-btn-delete {
@@ -341,6 +367,428 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+.spin-anim {
+  animation: spin 1s linear infinite;
+}
+
+/* ════════════════════════════════════════════
+   Subcategory Tree Panel
+   ════════════════════════════════════════════ */
+
+.subcat-panel {
+  width: 100%;
+}
+
+/* ── Panel Header ────────────────────────── */
+.subcat-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.subcat-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.4rem 0;
+  transition: color var(--transition-normal);
+  white-space: nowrap;
+}
+
+.subcat-back-btn:hover {
+  color: var(--text-primary);
+}
+
+.subcat-panel-title-group {
+  flex: 1;
+}
+
+.subcat-panel-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.subcat-panel-breadcrumb-current {
+  color: var(--accent-teal);
+  font-weight: 600;
+}
+
+.subcat-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.6rem;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem;
+}
+
+.subcat-panel-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.subcat-panel-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.subcat-add-root-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(139, 92, 246, 0.08);
+  color: #a78bfa;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.subcat-add-root-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: #8b5cf6;
+  color: #c4b5fd;
+}
+
+.subcat-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent-teal);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition-normal);
+}
+
+.subcat-save-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.subcat-save-btn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+/* ── Unsaved banner ──────────────────────── */
+.subcat-unsaved-banner {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 1rem;
+  color: #fbbf24;
+  font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Tree container ──────────────────────── */
+.subcat-tree-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: 200px;
+}
+
+/* ── Empty state ─────────────────────────── */
+.subcat-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.subcat-empty-state svg {
+  opacity: 0.35;
+  margin-bottom: 0.5rem;
+}
+
+.subcat-empty-state p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Tree node wrapper ───────────────────── */
+.subcat-node-wrapper {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.subcat-node-wrapper:last-child {
+  border-bottom: none;
+}
+
+/* ── Node row ────────────────────────────── */
+.subcat-node-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  padding-right: 0.75rem;
+  transition: background var(--transition-normal);
+  min-height: 44px;
+}
+
+.subcat-node-row:hover {
+  background: var(--bg-tertiary);
+}
+
+.subcat-node-row:hover .subcat-node-actions {
+  opacity: 1;
+}
+
+/* ── Toggle button ───────────────────────── */
+.subcat-toggle-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-normal);
+  padding: 0;
+}
+
+.subcat-toggle-btn:hover:not(:disabled) {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.subcat-toggle-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Leaf dot when no children */
+.subcat-leaf-dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--border-color);
+  margin: 0 auto;
+}
+
+/* ── Folder icon ─────────────────────────── */
+.subcat-folder-icon {
+  flex-shrink: 0;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Node label ──────────────────────────── */
+.subcat-node-label {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.subcat-node-en {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subcat-node-ar {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  direction: rtl;
+  font-family: 'Tajawal', 'Cairo', sans-serif;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Node action buttons (hidden until hover) */
+.subcat-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.subcat-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  padding: 0;
+}
+
+.subcat-add-btn {
+  color: #a78bfa;
+}
+
+.subcat-add-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c4b5fd;
+}
+
+.subcat-edit-btn {
+  color: var(--accent-teal);
+}
+
+.subcat-edit-btn:hover {
+  background: rgba(20, 184, 166, 0.15);
+}
+
+.subcat-delete-btn {
+  color: #ef4444;
+}
+
+.subcat-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ── Inline form ─────────────────────────── */
+.subcat-inline-form {
+  margin: 0.4rem 0 0.6rem;
+  padding: 0.9rem 1rem;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.subcat-inline-form--root {
+  border-radius: 0;
+  border-top: none;
+}
+
+.subcat-inline-form--add {
+  border-left: 3px solid #8b5cf6;
+}
+
+.subcat-inline-form-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+}
+
+.subcat-inline-form-label strong {
+  color: var(--text-primary);
+}
+
+.subcat-inline-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.subcat-inline-form-row input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  box-sizing: border-box;
+  transition: border-color var(--transition-normal);
+}
+
+.subcat-inline-form-row input:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+}
+
+.subcat-inline-form-row input[dir="rtl"] {
+  text-align: right;
+  font-family: 'Tajawal', 'Cairo', sans-serif;
+}
+
+.subcat-inline-form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.subcat-form-save,
+.subcat-form-cancel {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.subcat-form-save {
+  border: none;
+  background: var(--accent-teal);
+  color: white;
+}
+
+.subcat-form-save:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.subcat-form-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.subcat-form-cancel {
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.subcat-form-cancel:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 /* ════════════════════════════════════════
@@ -379,6 +827,42 @@
   .btn-save-cat {
     width: 100%;
     text-align: center;
+  }
+
+  .subcat-panel-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .subcat-panel-title {
+    font-size: 1.3rem;
+  }
+
+  .subcat-panel-header-actions {
+    width: 100%;
+  }
+
+  .subcat-add-root-btn,
+  .subcat-save-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .subcat-inline-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .subcat-node-actions {
+    opacity: 1;
+  }
+
+  .category-card-actions {
+    flex-wrap: wrap;
+  }
+
+  .cat-btn-subcat {
+    width: 100%;
+    justify-content: center;
   }
 }
 

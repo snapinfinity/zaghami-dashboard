@@ -99,6 +99,14 @@
   letter-spacing: 0.5px;
 }
 
+.product-card-subcat {
+  color: var(--text-secondary);
+  font-weight: 400;
+  opacity: 0.8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .product-card-title-en {
   font-size: 1.05rem;
   font-weight: 700;
