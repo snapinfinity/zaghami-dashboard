@@ -24,6 +24,7 @@ export interface SubcategoryNode {
 
 export interface ProductCategory {
   id: string;
+  slug?: string;
   nameEn: string;
   nameAr: string;
   subtitleEn: string;
@@ -43,6 +44,7 @@ export interface ProductCategory {
 }
 
 const EMPTY_FORM = {
+  slug: '',
   nameEn: '', nameAr: '', subtitleEn: '', subtitleAr: '', descriptionEn: '', descriptionAr: '',
   homepageDescriptionEn: '', homepageDescriptionAr: '',
   imageUrl: '', heroImageUrl: '', homepageImage1: '', homepageImage2: '', homepageImage3: ''
@@ -560,6 +562,7 @@ export const ProductCategories: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
   const [isUploadingHero, setIsUploadingHero] = useState(false);
@@ -662,11 +665,12 @@ export const ProductCategories: React.FC = () => {
   };
 
   /* ── Open modal ───────────────────────────────────────────────── */
-  const openAdd = () => { setEditingId(null); setFormData(EMPTY_FORM); setIsModalOpen(true); };
+  const openAdd = () => { setEditingId(null); setFormData(EMPTY_FORM); setSlugManuallyEdited(false); setIsModalOpen(true); };
 
   const openEdit = (cat: ProductCategory) => {
     setEditingId(cat.id);
     setFormData({
+      slug: cat.slug || '',
       nameEn: cat.nameEn, nameAr: cat.nameAr,
       subtitleEn: cat.subtitleEn || '', subtitleAr: cat.subtitleAr || '',
       descriptionEn: cat.descriptionEn || '', descriptionAr: cat.descriptionAr || '',
@@ -677,10 +681,12 @@ export const ProductCategories: React.FC = () => {
       homepageImage2: cat.homepageImage2 || '',
       homepageImage3: cat.homepageImage3 || ''
     });
+    // If existing category already has a slug saved, treat it as manually set
+    setSlugManuallyEdited(!!(cat.slug?.trim()));
     setIsModalOpen(true);
   };
 
-  const closeModal = () => { setIsModalOpen(false); setEditingId(null); setFormData(EMPTY_FORM); };
+  const closeModal = () => { setIsModalOpen(false); setEditingId(null); setFormData(EMPTY_FORM); setSlugManuallyEdited(false); };
 
   /* ── Save (add or update) ─────────────────────────────────────── */
   const handleSave = async (e: React.FormEvent) => {
@@ -695,7 +701,15 @@ export const ProductCategories: React.FC = () => {
     }
     setIsSaving(true);
     try {
+      const generateSlug = (name: string) =>
+        name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+      const slug = editingId
+        ? (formData.slug?.trim() || generateSlug(formData.nameEn.trim()))
+        : generateSlug(formData.nameEn.trim());
+
       const categoryData = {
+        slug,
         nameEn: formData.nameEn.trim(), nameAr: formData.nameAr.trim(),
         subtitleEn: formData.subtitleEn.trim(), subtitleAr: formData.subtitleAr.trim(),
         descriptionEn: formData.descriptionEn.trim(), descriptionAr: formData.descriptionAr.trim(),
@@ -911,7 +925,50 @@ export const ProductCategories: React.FC = () => {
                 <div className="cat-form-group">
                   <label>Category Name (English)</label>
                   <input type="text" required placeholder="e.g. Electrical" value={formData.nameEn}
-                    onChange={e => setFormData(p => ({ ...p, nameEn: e.target.value }))} />
+                    onChange={e => {
+                      const val = e.target.value;
+                      const autoSlug = val.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                      setFormData(p => ({
+                        ...p,
+                        nameEn: val,
+                        // Auto-sync slug unless user has manually edited it
+                        ...(!slugManuallyEdited ? { slug: autoSlug } : {})
+                      }));
+                    }} />
+                </div>
+
+                {/* Slug Preview */}
+                <div className="cat-form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    URL Slug
+                    {!editingId && <span style={{ opacity: 0.55, fontWeight: 400, fontSize: '0.8rem' }}>— auto-generated from name</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.slug || ''}
+                    onChange={e => {
+                      setSlugManuallyEdited(true);
+                      setFormData(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }));
+                    }}
+                    placeholder="e.g. electrical"
+                    style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: 'var(--accent, #27818A)' }}
+                  />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <span>URL: <code style={{ background: 'var(--bg-secondary)', padding: '1px 5px', borderRadius: '3px' }}>/products/{formData.slug || 'slug'}</code></span>
+                    {slugManuallyEdited && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const autoSlug = formData.nameEn.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                          setFormData(p => ({ ...p, slug: autoSlug }));
+                          setSlugManuallyEdited(false);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent, #27818A)', cursor: 'pointer', fontSize: '0.78rem', padding: 0, textDecoration: 'underline' }}
+                      >
+                        Reset to auto
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Subtitle EN */}

@@ -107,23 +107,35 @@
   padding-top: 1.25rem;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .project-meta-col {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .project-meta-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
 }
 
 .project-meta-value {
   font-size: 0.95rem;
   font-weight: 700;
   color: #0f172a;
+}
+
+.project-meta-value-group {
+  display: flex;
+  flex-direction: column;
+  color: #0f172a;
+  font-weight: 700;
 }
 
 .card-admin-overlay {
@@ -141,6 +153,28 @@
   opacity: 1;
 }
 
+/* ── react-select portal z-index ────────────────────────────── */
+.country-select__menu-portal {
+  z-index: 9999 !important;
+}
+
+/* ── Responsive form grid ────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-container {
+    padding: 1.25rem !important;
+  }
+}
+
 @media (max-width: 768px) {
   .project-section {
     padding: 1.5rem 1rem;
@@ -154,10 +188,44 @@
   .project-img-wrapper {
     height: 180px;
   }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .editor-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .language-tabs {
+    flex-wrap: wrap;
+  }
+
+  .lang-tab-btn {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+  }
+
+  .editor-footer {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .editor-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 480px) {
   .project-card-title {
     font-size: 1.2rem;
+  }
+
+  .project-section {
+    padding: 1rem 0.75rem;
   }
 }

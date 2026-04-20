@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Beaker, Zap, Building, Droplets } from 'lucide-react';
+import { 
+  Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Beaker, Zap, Building, Droplets,
+  Factory, Cog, Wrench, Shield, ShieldCheck, Flame, Hammer, Truck, Package, Plug, Lightbulb, Activity, Layers, Box, MapPin
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -8,6 +11,95 @@ import { db, storage } from '../lib/firebase';
 import './ProjectManagement.css';
 import '../pages/BlogManagement.css'; // Re-use form styles
 import { AlertModal, type AlertType } from '../components/AlertModal';
+import Select, { type StylesConfig } from 'react-select';
+import { getData } from 'country-list';
+import ReactCountryFlag from 'react-country-flag';
+
+interface CountryOption { value: string; label: string; code: string; }
+
+const countryOptions: CountryOption[] = getData()
+  .map(({ code, name }) => {
+    // Clean up formal names like "United Arab Emirates (the)" -> "United Arab Emirates"
+    const cleanName = name.replace(/ \((the|The)\)$/, '').replace(/, (the|The)$/, '');
+    return { value: cleanName, label: cleanName, code };
+  })
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+const getCountryCode = (countryName: string) => {
+  const found = countryOptions.find(o => o.value === countryName);
+  return found ? found.code : null;
+};
+
+const countrySelectStyles: StylesConfig<CountryOption, false> = {
+  control: (base, state) => ({
+    ...base,
+    background: 'var(--bg-secondary, #1e293b)',
+    borderColor: state.isFocused ? 'var(--accent, #27818A)' : 'var(--border-color, #334155)',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(39,129,138,0.25)' : 'none',
+    borderRadius: '8px',
+    minHeight: '42px',
+    cursor: 'pointer',
+    '&:hover': { borderColor: 'var(--accent, #27818A)' },
+  }),
+  menu: base => ({
+    ...base,
+    background: 'var(--bg-secondary, #1e293b)',
+    border: '1px solid var(--border-color, #334155)',
+    borderRadius: '8px',
+    zIndex: 9999,
+  }),
+  menuList: base => ({ ...base, padding: '4px', maxHeight: '260px' }),
+  option: (base, state) => ({
+    ...base,
+    background: state.isSelected
+      ? 'var(--accent, #27818A)'
+      : state.isFocused ? 'rgba(39,129,138,0.15)' : 'transparent',
+    color: 'var(--text-primary, #f1f5f9)',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '0.9rem',
+    padding: '6px 10px',
+  }),
+  singleValue: base => ({ ...base, color: 'var(--text-primary, #f1f5f9)' }),
+  input: base => ({ ...base, color: 'var(--text-primary, #f1f5f9)' }),
+  placeholder: base => ({ ...base, color: 'var(--text-secondary, #94a3b8)' }),
+  indicatorSeparator: () => ({ display: 'none' }),
+  dropdownIndicator: base => ({ ...base, color: 'var(--text-secondary, #94a3b8)', padding: '0 8px' }),
+  clearIndicator: base => ({ ...base, color: 'var(--text-secondary, #94a3b8)' }),
+};
+
+const FlagOption = ({ data, innerRef, innerProps, isSelected }: any) => (
+  <div
+    ref={innerRef}
+    {...innerProps}
+    style={{
+      display: 'flex', alignItems: 'center', gap: '10px',
+      padding: '7px 10px', cursor: 'pointer', borderRadius: '6px',
+      fontSize: '0.9rem', color: 'var(--text-primary, #f1f5f9)',
+      background: isSelected ? 'var(--accent, #27818A)' : 'transparent',
+    }}
+    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(39,129,138,0.18)'; }}
+    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+  >
+    <ReactCountryFlag
+      countryCode={data.code}
+      svg
+      style={{ width: '1.4em', height: '1.1em', borderRadius: '2px', objectFit: 'cover', flexShrink: 0, boxShadow: '0 0 0 1px rgba(255,255,255,0.1)' }}
+    />
+    <span>{data.label}</span>
+  </div>
+);
+
+const FlagSingleValue = ({ data }: any) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <ReactCountryFlag
+      countryCode={data.code}
+      svg
+      style={{ width: '1.4em', height: '1.1em', borderRadius: '2px', objectFit: 'cover', flexShrink: 0, boxShadow: '0 0 0 1px rgba(0,0,0,0.1)' }}
+    />
+    <span style={{ color: 'var(--text-primary, #f1f5f9)' }}>{data.label}</span>
+  </div>
+);
 
 export interface Project {
   id: string;
@@ -16,6 +108,8 @@ export interface Project {
   projectValue: string;
   imageUrl: string;
   iconType: string;
+  customIconName?: string;
+  country?: string;
   
   titleEn: string;
   summaryEn: string;
@@ -33,7 +127,9 @@ const emptyProject: Partial<Project> = {
   clientNameAr: '',
   projectValue: '',
   imageUrl: '',
-  iconType: 'Chemical',
+  iconType: '',
+  customIconName: '',
+  country: '',
   titleEn: '', summaryEn: '', locationEn: '',
   titleAr: '', summaryAr: '', locationAr: ''
 };
@@ -211,13 +307,89 @@ export const ProjectManagement: React.FC = () => {
     });
   };
 
-  const renderIcon = (type: string) => {
+  const handleDeleteCategory = (catToDelete: string) => {
+    setAlertConfig({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Category',
+      message: `Are you sure you want to delete the category "${catToDelete}" globally? All projects using this category will become "Uncategorized".`,
+      confirmText: 'Delete Category',
+      showCancel: true,
+      onConfirm: async () => {
+        closeAlert();
+        try {
+          const projsToUpdate = projects.filter(p => p.iconType === catToDelete);
+          const updatePromises = projsToUpdate.map(p => 
+            setDoc(doc(db, 'projects', p.id), { iconType: 'Uncategorized', customIconName: '' }, { merge: true })
+          );
+          await Promise.all(updatePromises);
+          
+          if (formData.iconType === catToDelete) {
+             setFormData(prev => ({ ...prev, iconType: 'Uncategorized', customIconName: '' }));
+          }
+          showAlert("Deleted", `Category "${catToDelete}" has been deleted globally.`, "success");
+        } catch (err) {
+          console.error("Error deleting category: ", err);
+          showAlert("Error", "Failed to delete category.", "danger");
+        }
+      }
+    });
+  };
+
+  const renderIcon = (type: string, customIconName?: string) => {
+    if (customIconName) {
+      switch (customIconName) {
+        case 'Factory': return <Factory size={24} />;
+        case 'Cog': return <Cog size={24} />;
+        case 'Wrench': return <Wrench size={24} />;
+        case 'Hammer': return <Hammer size={24} />;
+        case 'Zap': return <Zap size={24} />;
+        case 'Plug': return <Plug size={24} />;
+        case 'Lightbulb': return <Lightbulb size={24} />;
+        case 'Shield': return <Shield size={24} />;
+        case 'ShieldCheck': return <ShieldCheck size={24} />;
+        case 'Activity': return <Activity size={24} />;
+        case 'Beaker': return <Beaker size={24} />;
+        case 'Droplets': return <Droplets size={24} />;
+        case 'Flame': return <Flame size={24} />;
+        case 'Truck': return <Truck size={24} />;
+        case 'Package': return <Package size={24} />;
+        case 'Box': return <Box size={24} />;
+        case 'Layers': return <Layers size={24} />;
+        case 'Building': return <Building size={24} />;
+      }
+    }
+
     switch (type) {
       case 'Chemical': return <Beaker size={24} />;
       case 'Energy': return <Zap size={24} />;
       case 'Construction': return <Building size={24} />;
       case 'Pipeline': return <Droplets size={24} />;
-      default: return <Building size={24} />;
+      default: 
+        const ref = projects.find(p => p.iconType === type && p.customIconName);
+        if (ref && ref.customIconName) return renderIcon(type, ref.customIconName);
+        return <Building size={24} />;
+    }
+  };
+
+  const AVAILABLE_CUSTOM_ICONS = [
+    'Factory', 'Cog', 'Wrench', 'Hammer',
+    'Zap', 'Plug', 'Lightbulb',
+    'Shield', 'ShieldCheck', 'Activity',
+    'Beaker', 'Droplets', 'Flame',
+    'Truck', 'Package', 'Box', 'Layers', 'Building'
+  ];
+
+  const allKnownCats = Array.from(new Set(projects.map(p => p.iconType).filter(Boolean)));
+  const isCustomSelected = formData.iconType !== undefined && !allKnownCats.includes(formData.iconType);
+
+  const getCategoryLabel = (cat: string) => {
+    switch (cat) {
+      case 'Chemical': return 'Chemical / Processing';
+      case 'Energy': return 'Energy / Power';
+      case 'Construction': return 'Construction / Heavy';
+      case 'Pipeline': return 'Pipeline / Water';
+      default: return cat;
     }
   };
 
@@ -274,13 +446,65 @@ export const ProjectManagement: React.FC = () => {
                     <input type="text" name="projectValue" value={formData.projectValue || ''} onChange={handleChange} placeholder="e.g. $4.1M" required />
                   </div>
                   <div className="form-group">
-                    <label>Category Icon</label>
-                    <select name="iconType" value={formData.iconType || 'Chemical'} onChange={handleChange}>
-                      <option value="Chemical">Chemical / Processing</option>
-                      <option value="Energy">Energy / Power</option>
-                      <option value="Construction">Construction / Heavy</option>
-                      <option value="Pipeline">Pipeline / Water</option>
-                    </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label style={{ margin: 0 }}>Project Category</label>
+                      {allKnownCats.includes(formData.iconType || '') && formData.iconType !== 'Uncategorized' && (
+                        <button 
+                          type="button" 
+                          onClick={() => handleDeleteCategory(formData.iconType!)}
+                          style={{
+                            background: 'none', border: 'none', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', padding: 0
+                          }}
+                          title="Delete this category globally"
+                        >
+                          <Trash2 size={14} /> Delete '{formData.iconType}'
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <select 
+                        value={isCustomSelected ? 'Custom' : formData.iconType} 
+                        onChange={(e) => {
+                          if (e.target.value === 'Custom') {
+                            setFormData(prev => ({ ...prev, iconType: '' }));
+                          } else {
+                            setFormData(prev => ({ ...prev, iconType: e.target.value }));
+                          }
+                        }}
+                      >
+                        <option value="" disabled>Select a category</option>
+                        {allKnownCats.map(cat => (
+                          <option key={cat} value={cat}>{getCategoryLabel(cat)}</option>
+                        ))}
+                        <option value="Custom">+ Add New Category...</option>
+                      </select>
+                      
+                      {isCustomSelected && (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <input 
+                            type="text" 
+                            name="iconType" 
+                            value={formData.iconType || ''} 
+                            onChange={handleChange}
+                            placeholder="Type new category name"
+                            autoFocus
+                            required
+                            style={{ flex: 1 }}
+                          />
+                          <select 
+                            name="customIconName" 
+                            value={formData.customIconName || ''} 
+                            onChange={handleChange}
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Default Icon</option>
+                            {AVAILABLE_CUSTOM_ICONS.map(icon => (
+                              <option key={icon} value={icon}>{icon} Icon</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="form-group full-width">
@@ -339,6 +563,21 @@ export const ProjectManagement: React.FC = () => {
                     />
                   </div>
                   <div className="form-group full-width">
+                    <label>Country</label>
+                    <Select<CountryOption>
+                      options={countryOptions}
+                      value={countryOptions.find(o => o.value === (formData.country || '')) || null}
+                      onChange={opt => setFormData(prev => ({ ...prev, country: opt?.value || '' }))}
+                      placeholder="Search & select country…"
+                      isClearable
+                      isSearchable
+                      styles={countrySelectStyles}
+                      components={{ Option: FlagOption, SingleValue: FlagSingleValue }}
+                      menuPlacement="auto"
+                      classNamePrefix="country-select"
+                    />
+                  </div>
+                  <div className="form-group full-width">
                     <label>{currentLang === 'EN' ? 'Location' : 'Location (Arabic)'}</label>
                     <input 
                       type="text" 
@@ -346,7 +585,7 @@ export const ProjectManagement: React.FC = () => {
                       value={(currentLang === 'EN' ? formData.locationEn : formData.locationAr) || ''} 
                       onChange={handleChange} 
                       className={currentLang === 'AR' ? 'rtl-input' : ''}
-                      placeholder={currentLang === 'EN' ? 'e.g. Jubail, KSA' : ''}
+                      placeholder={currentLang === 'EN' ? 'e.g. Jubail' : ''}
                       required 
                     />
                   </div>
@@ -399,7 +638,7 @@ export const ProjectManagement: React.FC = () => {
                       {proj.imageUrl && <img src={proj.imageUrl} alt={proj.titleEn} />}
                       <div className="project-img-overlay">
                         <div className="project-icon-box">
-                          {renderIcon(proj.iconType)}
+                          {renderIcon(proj.iconType, proj.customIconName)}
                         </div>
                         <div className="project-img-titles">
                           <span className="project-client-name">{proj.clientName}</span>
@@ -415,9 +654,24 @@ export const ProjectManagement: React.FC = () => {
                           <span className="project-meta-label">Project Value</span>
                           <span className="project-meta-value">{proj.projectValue}</span>
                         </div>
-                        <div className="project-meta-col" style={{ textAlign: 'left' }}>
+                        <div className="project-meta-col" style={{ textAlign: 'left', flex: 1 }}>
                           <span className="project-meta-label">Location</span>
-                          <span className="project-meta-value">{proj.locationEn}</span>
+                          <div className="project-meta-value-group">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                              <MapPin size={14} color="#27818A" style={{ flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.95rem' }}>{proj.locationEn}</span>
+                            </div>
+                            {proj.country && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '2px' }}>
+                                <ReactCountryFlag
+                                  countryCode={getCountryCode(proj.country) || ''}
+                                  svg
+                                  style={{ width: '1.2em', height: '0.9em', borderRadius: '1px', flexShrink: 0 }}
+                                />
+                                <span style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 500 }}>{proj.country}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

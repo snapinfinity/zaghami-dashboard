@@ -25,14 +25,14 @@ export const DashboardHome: React.FC = () => {
 
   const navItems = [
     { title: 'Contact Enquiries', subtitle: 'View and manage customer enquiries', icon: <Mail size={20} />, path: '/messages' },
+    { title: 'Quote Requests', subtitle: 'View product quote requests from customers', icon: <ShoppingBag size={20} />, path: '/quotes' },
     { title: 'Blog Management', subtitle: 'Create and manage blog posts', icon: <FileText size={20} />, path: '/blog' },
     { title: 'Project Management', subtitle: 'Manage portfolio projects', icon: <FolderOpen size={20} />, path: '/projects' },
     { title: 'Client Logos', subtitle: 'Manage trusted client logos', icon: <Users size={20} />, path: '/clients' },
     { title: 'Partner Logos', subtitle: 'Manage strategic partner logos', icon: <Briefcase size={20} />, path: '/partners' },
     { title: 'Technical Resources', subtitle: 'Manage product documents', icon: <FileArchive size={20} />, path: '/resources' },
     { title: 'Product Categories', subtitle: 'Manage category names & images (EN + AR)', icon: <LayoutGrid size={20} />, path: '/categories' },
-    { title: 'Products', subtitle: 'Manage individual products', icon: <LayoutGrid size={20} />, path: '/products' },
-    { title: 'Quote Requests', subtitle: 'View product quote requests from customers', icon: <ShoppingBag size={20} />, path: '/quotes' }
+    { title: 'Products', subtitle: 'Manage individual products', icon: <LayoutGrid size={20} />, path: '/products' }
   ];
 
   return (

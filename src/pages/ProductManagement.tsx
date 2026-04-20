@@ -41,6 +41,7 @@ const findSubcatName = (nodes: SubcategoryNode[], id: string): string => {
 /* ─── Types ──────────────────────────────────────────────────────── */
 export interface Product {
   id: string;
+  slug?: string;
   categoryId: string;
   subcategoryId?: string;
   nameEn: string;
@@ -51,7 +52,7 @@ export interface Product {
   createdAt?: any;
 }
 
-const EMPTY_FORM = { categoryId: '', subcategoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '' };
+const EMPTY_FORM = { slug: '', categoryId: '', subcategoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '' };
 
 /* ─── Component ──────────────────────────────────────────────────── */
 export const ProductManagement: React.FC = () => {
@@ -67,6 +68,7 @@ export const ProductManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
@@ -176,12 +178,14 @@ export const ProductManagement: React.FC = () => {
       ...EMPTY_FORM,
       categoryId: selectedFilterCategory !== 'all' ? selectedFilterCategory : (categories[0]?.id || '')
     });
+    setSlugManuallyEdited(false);
     setIsModalOpen(true);
   };
 
   const openEdit = (prod: Product) => {
     setEditingId(prod.id);
     setFormData({
+      slug: prod.slug || '',
       categoryId: prod.categoryId,
       subcategoryId: prod.subcategoryId || '',
       nameEn: prod.nameEn,
@@ -190,6 +194,7 @@ export const ProductManagement: React.FC = () => {
       descriptionAr: prod.descriptionAr || '',
       imageUrl: prod.imageUrl || ''
     });
+    setSlugManuallyEdited(!!(prod.slug?.trim()));
     setIsModalOpen(true);
   };
 
@@ -197,6 +202,7 @@ export const ProductManagement: React.FC = () => {
     setIsModalOpen(false);
     setEditingId(null);
     setFormData(EMPTY_FORM);
+    setSlugManuallyEdited(false);
   };
 
   /* ── Save (add or update) ─────────────────────────────────────── */
@@ -217,7 +223,15 @@ export const ProductManagement: React.FC = () => {
 
     setIsSaving(true);
     try {
+      const generateSlug = (name: string) =>
+        name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+      const slug = editingId
+        ? (formData.slug?.trim() || generateSlug(formData.nameEn.trim()))
+        : generateSlug(formData.nameEn.trim());
+
       const dataToSave: Record<string, any> = {
+        slug,
         categoryId: formData.categoryId,
         nameEn: formData.nameEn.trim(),
         nameAr: formData.nameAr.trim(),
@@ -447,8 +461,50 @@ export const ProductManagement: React.FC = () => {
                     required
                     placeholder="e.g. Cables & Wires"
                     value={formData.nameEn}
-                    onChange={e => setFormData(p => ({ ...p, nameEn: e.target.value }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const autoSlug = val.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                      setFormData(p => ({
+                        ...p,
+                        nameEn: val,
+                        ...(!slugManuallyEdited ? { slug: autoSlug } : {})
+                      }));
+                    }}
                   />
+                </div>
+
+                {/* Slug */}
+                <div className="prod-form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    URL Slug
+                    {!slugManuallyEdited && <span style={{ opacity: 0.55, fontWeight: 400, fontSize: '0.8rem' }}>— auto-generated from name</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.slug || ''}
+                    onChange={e => {
+                      setSlugManuallyEdited(true);
+                      setFormData(p => ({ ...p, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }));
+                    }}
+                    placeholder="e.g. cables-and-wires"
+                    style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: 'var(--accent, #27818A)' }}
+                  />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <span>Slug: <code style={{ background: 'var(--bg-secondary)', padding: '1px 5px', borderRadius: '3px' }}>{formData.slug || 'slug'}</code></span>
+                    {slugManuallyEdited && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const autoSlug = formData.nameEn.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                          setFormData(p => ({ ...p, slug: autoSlug }));
+                          setSlugManuallyEdited(false);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent, #27818A)', cursor: 'pointer', fontSize: '0.78rem', padding: 0, textDecoration: 'underline' }}
+                      >
+                        Reset to auto
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Description EN */}

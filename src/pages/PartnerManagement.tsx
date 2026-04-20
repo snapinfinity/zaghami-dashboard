@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft, X, Loader2, UploadCloud } from 'lucide-react';
+import { Trash2, ArrowLeft, X, Loader2, UploadCloud, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -11,6 +11,7 @@ import { AlertModal, type AlertType } from '../components/AlertModal';
 export interface Partner {
   id: string;
   logoUrl: string;
+  websiteUrl?: string;
   createdAt?: any;
 }
 
@@ -20,7 +21,7 @@ export const PartnerManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ logoUrl: '' });
+  const [formData, setFormData] = useState({ logoUrl: '', websiteUrl: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
@@ -115,7 +116,7 @@ export const PartnerManagement: React.FC = () => {
         createdAt: serverTimestamp()
       });
       setIsModalOpen(false);
-      setFormData({ logoUrl: '' });
+      setFormData({ logoUrl: '', websiteUrl: '' });
       showAlert("Success", "Partner logo saved successfully.", "success");
     } catch (err) {
       console.error("Error saving partner: ", err);
@@ -193,6 +194,18 @@ export const PartnerManagement: React.FC = () => {
                 >
                   <Trash2 size={14} />
                 </button>
+                {partner.websiteUrl && (
+                  <a
+                    href={partner.websiteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    title={`Visit ${partner.websiteUrl}`}
+                    style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'white', color: '#27818A', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', textDecoration: 'none' }}
+                  >
+                    <Globe size={14} />
+                  </a>
+                )}
               </div>
               <div className="client-logo-wrapper" style={{ height: '100%', marginBottom: 0 }}>
                 <img src={partner.logoUrl} alt="Partner Logo" className="client-logo-img" />
@@ -224,7 +237,7 @@ export const PartnerManagement: React.FC = () => {
               </div>
               
               <form onSubmit={handleSave}>
-                <div style={{ marginBottom: '2rem' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Logo Image</label>
                   <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', padding: '1rem' }}>
                     {isUploadingImg ? (
@@ -240,6 +253,22 @@ export const PartnerManagement: React.FC = () => {
                     ) : (
                       <input type="file" accept="image/*" onChange={handleImageUpload} />
                     )}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                    Website URL <span style={{ fontWeight: 400, fontSize: '0.85rem', color: 'var(--text-secondary)', opacity: 0.7 }}>(optional)</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Globe size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', opacity: 0.6, pointerEvents: 'none' }} />
+                    <input
+                      type="url"
+                      value={formData.websiteUrl}
+                      onChange={e => setFormData(prev => ({ ...prev, websiteUrl: e.target.value }))}
+                      placeholder="https://www.partnerwebsite.com"
+                      style={{ width: '100%', padding: '0.65rem 0.75rem 0.65rem 2.25rem', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                    />
                   </div>
                 </div>
 
