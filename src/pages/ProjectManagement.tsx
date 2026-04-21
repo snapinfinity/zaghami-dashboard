@@ -108,6 +108,7 @@ export interface Project {
   projectValue: string;
   imageUrl: string;
   iconType: string;
+  iconTypeAr?: string;
   customIconName?: string;
   country?: string;
   
@@ -128,6 +129,7 @@ const emptyProject: Partial<Project> = {
   projectValue: '',
   imageUrl: '',
   iconType: '',
+  iconTypeAr: '',
   customIconName: '',
   country: '',
   titleEn: '', summaryEn: '', locationEn: '',
@@ -277,6 +279,17 @@ export const ProjectManagement: React.FC = () => {
       } else {
         await addDoc(collection(db, 'projects'), { ...formData, createdAt: serverTimestamp() });
       }
+
+      // Upsert to project_categories collection
+      if (formData.iconType && formData.iconType !== 'Uncategorized') {
+        const catId = formData.iconType.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
+        await setDoc(doc(db, 'project_categories', catId), {
+          nameEn: formData.iconType,
+          nameAr: formData.iconTypeAr || getCategoryLabel(formData.iconType, 'AR'),
+          iconName: formData.customIconName || ''
+        }, { merge: true });
+      }
+
       handleCloseEditor();
       showAlert("Success", "Project saved successfully.", "success");
     } catch (err) {
@@ -320,12 +333,15 @@ export const ProjectManagement: React.FC = () => {
         try {
           const projsToUpdate = projects.filter(p => p.iconType === catToDelete);
           const updatePromises = projsToUpdate.map(p => 
-            setDoc(doc(db, 'projects', p.id), { iconType: 'Uncategorized', customIconName: '' }, { merge: true })
+            setDoc(doc(db, 'projects', p.id), { iconType: 'Uncategorized', iconTypeAr: '', customIconName: '' }, { merge: true })
           );
           await Promise.all(updatePromises);
+
+          const catId = catToDelete.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
+          await deleteDoc(doc(db, 'project_categories', catId)).catch(e => console.error("Could not delete from project_categories", e));
           
           if (formData.iconType === catToDelete) {
-             setFormData(prev => ({ ...prev, iconType: 'Uncategorized', customIconName: '' }));
+             setFormData(prev => ({ ...prev, iconType: 'Uncategorized', iconTypeAr: '', customIconName: '' }));
           }
           showAlert("Deleted", `Category "${catToDelete}" has been deleted globally.`, "success");
         } catch (err) {
@@ -361,10 +377,14 @@ export const ProjectManagement: React.FC = () => {
     }
 
     switch (type) {
-      case 'Chemical': return <Beaker size={24} />;
-      case 'Energy': return <Zap size={24} />;
-      case 'Construction': return <Building size={24} />;
-      case 'Pipeline': return <Droplets size={24} />;
+      case 'Chemical':
+      case 'Chemical / Processing': return <Beaker size={24} />;
+      case 'Energy':
+      case 'Energy / Power': return <Zap size={24} />;
+      case 'Construction':
+      case 'Construction / Heavy': return <Building size={24} />;
+      case 'Pipeline':
+      case 'Pipeline / Water': return <Droplets size={24} />;
       default: 
         const ref = projects.find(p => p.iconType === type && p.customIconName);
         if (ref && ref.customIconName) return renderIcon(type, ref.customIconName);
@@ -383,12 +403,33 @@ export const ProjectManagement: React.FC = () => {
   const allKnownCats = Array.from(new Set(projects.map(p => p.iconType).filter(Boolean)));
   const isCustomSelected = formData.iconType !== undefined && !allKnownCats.includes(formData.iconType);
 
-  const getCategoryLabel = (cat: string) => {
+  const getCategoryLabel = (cat: string, lang: 'EN' | 'AR' = 'EN') => {
+    if (lang === 'AR') {
+      const projWithAr = projects.find(p => p.iconType === cat && p.iconTypeAr);
+      if (projWithAr?.iconTypeAr) return projWithAr.iconTypeAr;
+
+      switch (cat) {
+        case 'Chemical':
+        case 'Chemical / Processing': return 'كيميائي / معالجة';
+        case 'Energy':
+        case 'Energy / Power': return 'طاقة / قوى';
+        case 'Construction':
+        case 'Construction / Heavy': return 'بناء / ثقيل';
+        case 'Pipeline':
+        case 'Pipeline / Water': return 'خطوط أنابيب / مياه';
+        default: return cat;
+      }
+    }
+
     switch (cat) {
-      case 'Chemical': return 'Chemical / Processing';
-      case 'Energy': return 'Energy / Power';
-      case 'Construction': return 'Construction / Heavy';
-      case 'Pipeline': return 'Pipeline / Water';
+      case 'Chemical':
+      case 'Chemical / Processing': return 'Chemical / Processing';
+      case 'Energy':
+      case 'Energy / Power': return 'Energy / Power';
+      case 'Construction':
+      case 'Construction / Heavy': return 'Construction / Heavy';
+      case 'Pipeline':
+      case 'Pipeline / Water': return 'Pipeline / Water';
       default: return cat;
     }
   };
@@ -473,31 +514,48 @@ export const ProjectManagement: React.FC = () => {
                         }}
                       >
                         <option value="" disabled>Select a category</option>
-                        {allKnownCats.map(cat => (
-                          <option key={cat} value={cat}>{getCategoryLabel(cat)}</option>
-                        ))}
+                        {allKnownCats.map(cat => {
+                          const labelEn = getCategoryLabel(cat, 'EN');
+                          const labelAr = getCategoryLabel(cat, 'AR');
+                          return (
+                            <option key={cat} value={labelEn}>
+                              {labelEn} {labelAr !== labelEn ? `(${labelAr})` : ''}
+                            </option>
+                          );
+                        })}
                         <option value="Custom">+ Add New Category...</option>
                       </select>
                       
                       {isCustomSelected && (
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <input 
-                            type="text" 
-                            name="iconType" 
-                            value={formData.iconType || ''} 
-                            onChange={handleChange}
-                            placeholder="Type new category name"
-                            autoFocus
-                            required
-                            style={{ flex: 1 }}
-                          />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input 
+                              type="text" 
+                              name="iconType" 
+                              value={formData.iconType || ''} 
+                              onChange={handleChange}
+                              placeholder="Category Name (English)"
+                              autoFocus
+                              required
+                              style={{ flex: 1 }}
+                            />
+                            <input 
+                              type="text" 
+                              name="iconTypeAr" 
+                              value={formData.iconTypeAr || ''} 
+                              onChange={handleChange}
+                              placeholder="اسم الفئة (Arabic)"
+                              required
+                              style={{ flex: 1, direction: 'rtl' }}
+                            />
+                          </div>
                           <select 
                             name="customIconName" 
                             value={formData.customIconName || ''} 
                             onChange={handleChange}
-                            style={{ flex: 1 }}
+                            style={{ width: '100%' }}
                           >
-                            <option value="">Default Icon</option>
+                            <option value="">Select Icon Symbol</option>
                             {AVAILABLE_CUSTOM_ICONS.map(icon => (
                               <option key={icon} value={icon}>{icon} Icon</option>
                             ))}

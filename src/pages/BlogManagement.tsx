@@ -7,6 +7,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './BlogManagement.css';
 import { AlertModal, type AlertType } from '../components/AlertModal';
+import { RichTextEditor } from '../components/RichTextEditor';
 
 export interface Insight {
   id: string;
@@ -200,13 +201,14 @@ export const BlogManagement: React.FC = () => {
       return;
     }
 
-    // Auto-calculate read time based on English content length (~200 words per minute)
-    const contentEnStr = formData.contentEn?.trim() || '';
-    const contentArStr = formData.contentAr?.trim() || '';
-    const words = contentEnStr.split(/\s+/).length;
+    // Strip HTML tags for word count / summary generation
+    const stripHtml = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const contentEnStr = stripHtml(formData.contentEn?.trim() || '');
+    const contentArStr = stripHtml(formData.contentAr?.trim() || '');
+    const words = contentEnStr.split(/\s+/).filter(Boolean).length;
     const readTimeMinutes = Math.max(1, Math.ceil(words / 200));
-    
-    // Auto-generate summary from content if not present
+
+    // Auto-generate summary from plain text if not manually set
     const genSummaryEn = contentEnStr.substring(0, 120) + (contentEnStr.length > 120 ? '...' : '');
     const genSummaryAr = contentArStr.substring(0, 120) + (contentArStr.length > 120 ? '...' : '');
 
@@ -409,11 +411,15 @@ export const BlogManagement: React.FC = () => {
 
                   <div className="form-group full-width">
                     <label>{currentLang === 'EN' ? 'Full Article Content' : 'Full Article Content (Arabic)'}</label>
-                    <textarea 
-                      name={currentLang === 'EN' ? 'contentEn' : 'contentAr'} 
-                      value={(currentLang === 'EN' ? formData.contentEn : formData.contentAr) || ''} 
-                      onChange={handleChange} 
-                      className={`tall-textarea ${currentLang === 'AR' ? 'rtl-input' : ''}`}
+                    <RichTextEditor
+                      key={currentLang}
+                      value={(currentLang === 'EN' ? formData.contentEn : formData.contentAr) || ''}
+                      onChange={(html) => setFormData(prev => ({
+                        ...prev,
+                        [currentLang === 'EN' ? 'contentEn' : 'contentAr']: html
+                      }))}
+                      placeholder={currentLang === 'EN' ? 'Start writing your article...' : 'ابدأ كتابة مقالتك...'}
+                      rtl={currentLang === 'AR'}
                     />
                   </div>
                 </div>
@@ -474,20 +480,32 @@ export const BlogManagement: React.FC = () => {
                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{formData.publishedDate} • {formData.readTime}</span>
                   </div>
                   <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.2 }}>{formData.titleEn}</h1>
-                  <div style={{ color: 'var(--text-primary)', lineHeight: 1.8, fontSize: '1.05rem', whiteSpace: 'pre-wrap' }}>
-                    {formData.contentEn || <span style={{ color: 'var(--text-secondary)' }}>No English content written yet.</span>}
-                  </div>
+                  {formData.contentEn ? (
+                    <div
+                      className="article-content"
+                      style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}
+                      dangerouslySetInnerHTML={{ __html: formData.contentEn }}
+                    />
+                  ) : (
+                    <span style={{ color: 'var(--text-secondary)' }}>No English content written yet.</span>
+                  )}
                 </div>
-                
+
                 <div style={{ flex: 1, direction: 'rtl', textAlign: 'right', borderRight: '1px solid var(--border-color)', paddingRight: '4rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                     <span className={`category-pill ${formData.type?.toLowerCase()}`}>{formData.type}</span>
                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{formData.publishedDate} • {formData.readTime}</span>
                   </div>
                   <h1 style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem', lineHeight: 1.2, fontFamily: 'Arial, sans-serif' }}>{formData.titleAr || 'بدون عنوان'}</h1>
-                  <div style={{ color: 'var(--text-primary)', lineHeight: 1.8, fontSize: '1.05rem', whiteSpace: 'pre-wrap', fontFamily: 'Arial, sans-serif' }}>
-                    {formData.contentAr || <span style={{ color: 'var(--text-secondary)' }}>لا يوجد محتوى عربي بعد.</span>}
-                  </div>
+                  {formData.contentAr ? (
+                    <div
+                      className="article-content"
+                      style={{ fontSize: '1.05rem', color: 'var(--text-primary)', fontFamily: 'Arial, sans-serif' }}
+                      dangerouslySetInnerHTML={{ __html: formData.contentAr }}
+                    />
+                  ) : (
+                    <span style={{ color: 'var(--text-secondary)' }}>لا يوجد محتوى عربي بعد.</span>
+                  )}
                 </div>
               </div>
             </div>
