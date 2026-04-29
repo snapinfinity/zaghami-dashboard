@@ -7,7 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import {
   collection, query, onSnapshot, doc, deleteDoc,
-  addDoc, updateDoc, serverTimestamp, writeBatch
+  addDoc, serverTimestamp, writeBatch
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
