@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, ArrowLeft, X, Loader2, UploadCloud, Globe } from 'lucide-react';
+import { Trash2, ArrowLeft, X, Loader2, UploadCloud, Globe, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, onSnapshot, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import './ClientManagement.css';
@@ -21,6 +21,7 @@ export const ClientManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ logoUrl: '', websiteUrl: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
@@ -72,6 +73,24 @@ export const ClientManagement: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  const openAdd = () => {
+    setEditingId(null);
+    setFormData({ logoUrl: '', websiteUrl: '' });
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (client: Client) => {
+    setEditingId(client.id);
+    setFormData({ logoUrl: client.logoUrl, websiteUrl: client.websiteUrl || '' });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormData({ logoUrl: '', websiteUrl: '' });
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -111,13 +130,21 @@ export const ClientManagement: React.FC = () => {
     
     setIsSaving(true);
     try {
-      await addDoc(collection(db, 'clients'), {
-        ...formData,
-        createdAt: serverTimestamp()
-      });
-      setIsModalOpen(false);
-      setFormData({ logoUrl: '', websiteUrl: '' });
-      showAlert("Success", "Client logo saved successfully.", "success");
+      if (editingId) {
+        await updateDoc(doc(db, 'clients', editingId), {
+          logoUrl: formData.logoUrl,
+          websiteUrl: formData.websiteUrl,
+        });
+        closeModal();
+        showAlert("Updated", "Client logo updated successfully.", "success");
+      } else {
+        await addDoc(collection(db, 'clients'), {
+          ...formData,
+          createdAt: serverTimestamp()
+        });
+        closeModal();
+        showAlert("Success", "Client logo saved successfully.", "success");
+      }
     } catch (err) {
       console.error("Error saving client: ", err);
       showAlert("Error", "Failed to save client.", "danger");
@@ -170,7 +197,7 @@ export const ClientManagement: React.FC = () => {
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Loading clients...</div>
       ) : (
         <div className="client-grid">
-          <div className="client-card upload-card" onClick={() => setIsModalOpen(true)}>
+          <div className="client-card upload-card" onClick={openAdd}>
             <UploadCloud size={40} className="upload-icon" />
             <div style={{ textAlign: 'center' }}>
               <div className="upload-text">Add New Client</div>
@@ -187,10 +214,16 @@ export const ClientManagement: React.FC = () => {
             >
               <div className="client-admin-overlay">
                 <button 
-                  className="admin-btn delete" 
+                  className="logo-action-btn edit-btn" 
+                  onClick={() => openEdit(client)} 
+                  title="Edit Client"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button 
+                  className="logo-action-btn delete-btn" 
                   onClick={() => handleDelete(client.id)} 
                   title="Remove Client"
-                  style={{ width: '30px', height: '30px', borderRadius: '50%', border: 'none', background: 'white', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -201,7 +234,7 @@ export const ClientManagement: React.FC = () => {
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
                     title={`Visit ${client.websiteUrl}`}
-                    style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'white', color: '#27818A', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', textDecoration: 'none' }}
+                    className="logo-action-btn globe-btn"
                   >
                     <Globe size={14} />
                   </a>
@@ -230,8 +263,8 @@ export const ClientManagement: React.FC = () => {
               exit={{ scale: 0.95, opacity: 0 }}
             >
               <div className="client-modal-header">
-                <h2 className="client-modal-title">Add Client Logo</h2>
-                <button className="btn-close" onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                <h2 className="client-modal-title">{editingId ? 'Edit Client Logo' : 'Add Client Logo'}</h2>
+                <button className="btn-close" onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                   <X size={24} />
                 </button>
               </div>
@@ -248,7 +281,8 @@ export const ClientManagement: React.FC = () => {
                     ) : formData.logoUrl ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <img src={formData.logoUrl} alt="Preview" style={{ height: '40px', objectFit: 'contain' }} />
-                        <button type="button" onClick={() => setFormData({...formData, logoUrl: ''})} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>Remove</button>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Logo uploaded ✓</span>
+                        <button type="button" onClick={() => setFormData({...formData, logoUrl: ''})} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>Replace</button>
                       </div>
                     ) : (
                       <input type="file" accept="image/*" onChange={handleImageUpload} />
@@ -273,9 +307,9 @@ export const ClientManagement: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                  <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border-color)', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={closeModal} style={{ padding: '0.75rem 1.5rem', border: '1px solid var(--border-color)', background: 'transparent', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
                   <button type="submit" disabled={isSaving || isUploadingImg} style={{ padding: '0.75rem 1.5rem', border: 'none', background: 'var(--accent-teal)', color: 'white', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}>
-                    {isSaving ? 'Saving...' : 'Save Client'}
+                    {isSaving ? 'Saving...' : editingId ? 'Update Client' : 'Save Client'}
                   </button>
                 </div>
               </form>

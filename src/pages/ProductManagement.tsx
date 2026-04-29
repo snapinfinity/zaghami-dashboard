@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, X, Loader2, UploadCloud, Pencil, Trash2, ImageOff, Filter
+  ArrowLeft, X, Loader2, UploadCloud, Pencil, Trash2, ImageOff, Filter,
+  FolderTree, Plus, Check, Folder, FolderOpen
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -38,6 +39,177 @@ const findSubcatName = (nodes: SubcategoryNode[], id: string): string => {
   return '';
 };
 
+/* ─── Subcategory tree utilities ─────────────────────────────────── */
+const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const addChildToNode = (
+  nodes: SubcategoryNode[],
+  parentId: string | null,
+  newNode: SubcategoryNode
+): SubcategoryNode[] => {
+  if (parentId === null) return [...nodes, newNode];
+  return nodes.map(n =>
+    n.id === parentId
+      ? { ...n, children: [...n.children, newNode] }
+      : { ...n, children: addChildToNode(n.children, parentId, newNode) }
+  );
+};
+
+const deleteNodeFromTree = (nodes: SubcategoryNode[], id: string): SubcategoryNode[] =>
+  nodes
+    .filter(n => n.id !== id)
+    .map(n => ({ ...n, children: deleteNodeFromTree(n.children, id) }));
+
+/* ─── SubcatManager component ────────────────────────────────────── */
+interface SubcatManagerProps {
+  category: import('./ProductCategories').ProductCategory;
+  onClose: () => void;
+  onSaved: (newTree: SubcategoryNode[]) => void;
+}
+
+const SubcatManager: React.FC<SubcatManagerProps> = ({ category, onClose, onSaved }) => {
+  const [tree, setTree] = React.useState<SubcategoryNode[]>(
+    category.subcategories ? JSON.parse(JSON.stringify(category.subcategories)) : []
+  );
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isDirty, setIsDirty] = React.useState(false);
+
+  // Add state
+  const [addingUnder, setAddingUnder] = React.useState<string | null | 'ROOT'>('ROOT_HIDDEN');
+  const [addForm, setAddForm] = React.useState({ nameEn: '', nameAr: '' });
+
+  const markDirty = (newTree: SubcategoryNode[]) => { setTree(newTree); setIsDirty(true); };
+
+  const startAdd = (parentId: string | null) => {
+    setAddingUnder(parentId === null ? null : parentId);
+    setAddForm({ nameEn: '', nameAr: '' });
+  };
+
+  const commitAdd = (parentId: string | null) => {
+    if (!addForm.nameEn.trim()) return;
+    const node: SubcategoryNode = { id: genId(), nameEn: addForm.nameEn.trim(), nameAr: addForm.nameAr.trim(), children: [] };
+    markDirty(addChildToNode(tree, parentId, node));
+    setAddingUnder('ROOT_HIDDEN');
+    setAddForm({ nameEn: '', nameAr: '' });
+  };
+
+  const handleDelete = (id: string) => {
+    markDirty(deleteNodeFromTree(tree, id));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'product_categories', category.id), { subcategories: tree });
+      setIsDirty(false);
+      onSaved(tree);
+    } catch (err) {
+      console.error(err);
+    }
+    setIsSaving(false);
+  };
+
+  const renderNode = (node: SubcategoryNode, depth: number) => (
+    <div key={node.id} style={{ marginLeft: `${depth * 1.2}rem` }}>
+      <div className="sm-node-row">
+        <span className="sm-node-icon">
+          {node.children.length > 0 ? <FolderOpen size={13} /> : <Folder size={13} style={{ opacity: 0.5 }} />}
+        </span>
+        <span className="sm-node-label">{node.nameEn}{node.nameAr && <span className="sm-node-ar"> · {node.nameAr}</span>}</span>
+        <div className="sm-node-actions">
+          {depth < 1 && (
+            <button type="button" className="sm-btn sm-btn-add" onClick={() => startAdd(node.id)} title="Add child">
+              <Plus size={11} />
+            </button>
+          )}
+          <button type="button" className="sm-btn sm-btn-del" onClick={() => handleDelete(node.id)} title="Delete">
+            <Trash2 size={11} />
+          </button>
+        </div>
+      </div>
+      {/* Inline add child form */}
+      {addingUnder === node.id && (
+        <div className="sm-add-form" style={{ marginLeft: '1.2rem' }}>
+          <input autoFocus placeholder="Name (English)" value={addForm.nameEn}
+            onChange={e => setAddForm(f => ({ ...f, nameEn: e.target.value }))}
+            onKeyDown={e => e.key === 'Enter' && commitAdd(node.id)} />
+          <input placeholder="الاسم (عربي)" dir="rtl" value={addForm.nameAr}
+            onChange={e => setAddForm(f => ({ ...f, nameAr: e.target.value }))} />
+          <button type="button" className="sm-btn sm-btn-save" onClick={() => commitAdd(node.id)} disabled={!addForm.nameEn.trim()}>
+            <Check size={12} /> Add
+          </button>
+          <button type="button" className="sm-btn sm-btn-cancel" onClick={() => setAddingUnder('ROOT_HIDDEN')}>
+            <X size={12} />
+          </button>
+        </div>
+      )}
+      {node.children.map(child => renderNode(child, depth + 1))}
+    </div>
+  );
+
+  return (
+    <div className="sm-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div
+        className="sm-panel"
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.97 }}
+        transition={{ duration: 0.18 }}
+      >
+        {/* Header */}
+        <div className="sm-header">
+          <div className="sm-header-left">
+            <FolderTree size={18} />
+            <div>
+              <div className="sm-title">Manage Subcategories</div>
+              <div className="sm-subtitle">{category.nameEn}</div>
+            </div>
+          </div>
+          <button type="button" className="sm-close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+
+        {/* Tree */}
+        <div className="sm-tree">
+          {tree.length === 0 && addingUnder !== null && (
+            <div className="sm-empty">No subcategories yet. Click <strong>+ Add</strong> to start.</div>
+          )}
+          {tree.map(node => renderNode(node, 0))}
+
+          {/* Root-level add form */}
+          {addingUnder === null ? (
+            <div className="sm-add-form sm-add-form--root">
+              <input autoFocus placeholder="Name (English)" value={addForm.nameEn}
+                onChange={e => setAddForm(f => ({ ...f, nameEn: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && commitAdd(null)} />
+              <input placeholder="الاسم (عربي)" dir="rtl" value={addForm.nameAr}
+                onChange={e => setAddForm(f => ({ ...f, nameAr: e.target.value }))} />
+              <button type="button" className="sm-btn sm-btn-save" onClick={() => commitAdd(null)} disabled={!addForm.nameEn.trim()}>
+                <Check size={12} /> Add
+              </button>
+              <button type="button" className="sm-btn sm-btn-cancel" onClick={() => setAddingUnder('ROOT_HIDDEN')}>
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="sm-add-root-btn" onClick={() => startAdd(null)}>
+              <Plus size={13} /> Add Subcategory
+            </button>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sm-footer">
+          {isDirty && <span className="sm-unsaved">⚠ Unsaved changes</span>}
+          <button type="button" className="sm-btn-cancel-footer" onClick={onClose}>Close</button>
+          <button type="button" className="sm-btn-save-footer" onClick={handleSave} disabled={!isDirty || isSaving}>
+            {isSaving ? <><Loader2 size={14} className="spin" /> Saving…</> : <><Check size={14} /> Save Changes</>}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 /* ─── Types ──────────────────────────────────────────────────────── */
 export interface Product {
   id: string;
@@ -62,13 +234,15 @@ export const ProductManagement: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // New states for formatting filter
+  // Filter state
   const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>('all');
+  const [selectedFilterSubcat, setSelectedFilterSubcat] = useState<string>('all');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [subcatManagerCatId, setSubcatManagerCatId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
@@ -119,9 +293,23 @@ export const ProductManagement: React.FC = () => {
   }, []);
 
   const filteredProducts = useMemo(() => {
-    if (selectedFilterCategory === 'all') return products;
-    return products.filter(p => p.categoryId === selectedFilterCategory);
-  }, [products, selectedFilterCategory]);
+    let result = products;
+    if (selectedFilterCategory !== 'all') {
+      result = result.filter(p => p.categoryId === selectedFilterCategory);
+    }
+    if (selectedFilterSubcat !== 'all') {
+      result = result.filter(p => p.subcategoryId === selectedFilterSubcat);
+    }
+    return result;
+  }, [products, selectedFilterCategory, selectedFilterSubcat]);
+
+  /** Subcategory list for the currently selected FILTER category */
+  const filterSubcats = useMemo(() => {
+    if (selectedFilterCategory === 'all') return [];
+    const cat = categories.find(c => c.id === selectedFilterCategory);
+    if (!cat?.subcategories?.length) return [];
+    return flattenSubcats(cat.subcategories);
+  }, [categories, selectedFilterCategory]);
 
   const getCategoryName = (categoryId: string) => {
     return categories.find(c => c.id === categoryId)?.nameEn || 'Unknown Category';
@@ -322,13 +510,34 @@ export const ProductManagement: React.FC = () => {
             <Filter size={18} color="var(--text-secondary)" />
             <select
               value={selectedFilterCategory}
-              onChange={(e) => setSelectedFilterCategory(e.target.value)}
+              onChange={(e) => {
+                setSelectedFilterCategory(e.target.value);
+                setSelectedFilterSubcat('all');
+              }}
             >
               <option value="all">All Categories</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.nameEn} ({c.nameAr})</option>
               ))}
             </select>
+
+            {filterSubcats.length > 0 && (
+              <>
+                <span className="filter-separator">&#x203a;</span>
+                <select
+                  className="filter-subcat-select"
+                  value={selectedFilterSubcat}
+                  onChange={(e) => setSelectedFilterSubcat(e.target.value)}
+                >
+                  <option value="all">All Subcategories</option>
+                  {filterSubcats.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {'\u00a0'.repeat(s.depth * 3)}{s.depth > 0 ? '\u21b3 ' : ''}{s.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
 
           <div className="products-grid">
@@ -435,21 +644,36 @@ export const ProductManagement: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Subcategory Selection (only shown if category has subcategories) */}
-                {availableSubcats.length > 0 && (
+                {/* Subcategory Section */}
+                {formData.categoryId && (
                   <div className="prod-form-group">
-                    <label>Subcategory <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
-                    <select
-                      value={formData.subcategoryId}
-                      onChange={e => setFormData(p => ({ ...p, subcategoryId: e.target.value }))}
-                    >
-                      <option value="">— None (top-level) —</option>
-                      {availableSubcats.map(s => (
-                        <option key={s.id} value={s.id}>
-                          {'\u00A0'.repeat(s.depth * 4)}{s.depth > 0 ? '↳ ' : ''}{s.labelEn}{s.labelAr ? ` / ${s.labelAr}` : ''}
-                        </option>
-                      ))}
-                    </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label style={{ margin: 0 }}>Subcategory <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
+                      <button
+                        type="button"
+                        onClick={() => setSubcatManagerCatId(formData.categoryId)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'none', border: 'none', color: 'var(--accent-teal)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: 0 }}
+                      >
+                        <FolderTree size={13} /> Manage Subcategories
+                      </button>
+                    </div>
+                    {availableSubcats.length > 0 ? (
+                      <select
+                        value={formData.subcategoryId}
+                        onChange={e => setFormData(p => ({ ...p, subcategoryId: e.target.value }))}
+                      >
+                        <option value="">— None (top-level) —</option>
+                        {availableSubcats.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {'\u00A0'.repeat(s.depth * 4)}{s.depth > 0 ? '↳ ' : ''}{s.labelEn}{s.labelAr ? ` / ${s.labelAr}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div style={{ padding: '0.6rem 0.8rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        No subcategories yet — click <strong>Manage Subcategories</strong> to add some.
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -594,6 +818,27 @@ export const ProductManagement: React.FC = () => {
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* ── Subcategory Manager Modal ───────────────────────────── */}
+      <AnimatePresence>
+        {subcatManagerCatId && (() => {
+          const cat = categories.find(c => c.id === subcatManagerCatId);
+          if (!cat) return null;
+          return (
+            <SubcatManager
+              key={subcatManagerCatId}
+              category={cat}
+              onClose={() => setSubcatManagerCatId(null)}
+              onSaved={(newTree) => {
+                setCategories(prev => prev.map(c =>
+                  c.id === subcatManagerCatId ? { ...c, subcategories: newTree } : c
+                ));
+                setSubcatManagerCatId(null);
+              }}
+            />
+          );
+        })()}
       </AnimatePresence>
 
       <AlertModal 

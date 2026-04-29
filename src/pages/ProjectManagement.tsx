@@ -136,6 +136,140 @@ const emptyProject: Partial<Project> = {
   titleAr: '', summaryAr: '', locationAr: ''
 };
 
+/* ── CategoryPicker ──────────────────────────────────────────── */
+interface CategoryPickerProps {
+  value: string;
+  options: string[];
+  getCategoryLabel: (cat: string, lang: 'EN' | 'AR') => string;
+  renderIcon: (cat: string) => React.ReactNode;
+  onChange: (val: string) => void;
+}
+
+const CategoryPicker: React.FC<CategoryPickerProps> = ({ value, options, getCategoryLabel, renderIcon, onChange }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+
+  return (
+    <div ref={ref} style={{ position: 'relative', userSelect: 'none' }}>
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+          padding: '0.65rem 1rem', background: 'var(--bg-tertiary)',
+          border: open ? '1px solid var(--accent-teal)' : '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-md)', cursor: 'pointer',
+          color: value ? 'var(--text-primary)' : 'var(--text-secondary)',
+          fontSize: '0.9rem', textAlign: 'left', transition: 'border-color 0.15s',
+          boxShadow: open ? '0 0 0 2px var(--accent-teal-light)' : 'none',
+        }}
+      >
+        {value && value !== 'Custom' && (
+          <span style={{ color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {renderIcon(value)}
+          </span>
+        )}
+        <span style={{ flex: 1 }}>
+          {value && value !== 'Custom'
+            ? `${getCategoryLabel(value, 'EN')}  •  ${getCategoryLabel(value, 'AR')}`
+            : value === 'Custom' ? '+ Add New Category...' : 'Select a category'}
+        </span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginLeft: 'auto' }}>
+          {open ? '▲' : '▼'}
+        </span>
+      </button>
+
+      {/* Dropdown */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+              background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)',
+              zIndex: 999, maxHeight: '260px', overflowY: 'auto',
+              padding: '0.35rem',
+            }}
+          >
+            {options.length === 0 && (
+              <div style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                No categories yet — add one below.
+              </div>
+            )}
+            {options.map(cat => {
+              const isActive = cat === value;
+              const labelEn = getCategoryLabel(cat, 'EN');
+              const labelAr = getCategoryLabel(cat, 'AR');
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => { onChange(cat); setOpen(false); }}
+                  style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.6rem 0.85rem', borderRadius: '8px', border: 'none',
+                    background: isActive ? 'var(--accent-teal-light)' : 'transparent',
+                    color: isActive ? 'var(--accent-teal)' : 'var(--text-primary)',
+                    cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg-tertiary)'; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0, width: '24px', justifyContent: 'center' }}>
+                    {renderIcon(cat)}
+                  </span>
+                  <span style={{ flex: 1, fontWeight: isActive ? 600 : 400 }}>{labelEn}</span>
+                  {labelAr !== labelEn && (
+                    <span style={{ direction: 'rtl', color: 'var(--text-secondary)', fontSize: '0.82rem', fontFamily: 'Arial, sans-serif' }}>
+                      {labelAr}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            {/* Add new option */}
+            <button
+              type="button"
+              onClick={() => { onChange('Custom'); setOpen(false); }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '0.6rem',
+                padding: '0.6rem 0.85rem', marginTop: '0.25rem',
+                borderTop: '1px solid var(--border-color)',
+                borderRadius: '0 0 8px 8px', border: 'none',
+                background: 'transparent', color: 'var(--accent-teal)',
+                cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem',
+                fontWeight: 600, transition: 'background 0.12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-teal-light)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Plus size={16} />
+              Add New Category...
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 export const ProjectManagement: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -156,6 +290,7 @@ export const ProjectManagement: React.FC = () => {
 
   const [currentLang, setCurrentLang] = useState<'EN' | 'AR'>('EN');
   const [formData, setFormData] = useState<Partial<Project>>(emptyProject);
+  const [addingNewCat, setAddingNewCat] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
@@ -212,12 +347,14 @@ export const ProjectManagement: React.FC = () => {
     } else {
       setFormData(emptyProject);
     }
+    setAddingNewCat(false);
     setCurrentLang('EN');
     navigate('?mode=edit');
   };
 
   const handleCloseEditor = () => {
     setFormData(emptyProject);
+    setAddingNewCat(false);
     navigate(location.pathname);
   };
 
@@ -281,7 +418,7 @@ export const ProjectManagement: React.FC = () => {
       }
 
       // Upsert to project_categories collection
-      if (formData.iconType && formData.iconType !== 'Uncategorized') {
+      if (formData.iconType?.trim()) {
         const catId = formData.iconType.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
         await setDoc(doc(db, 'project_categories', catId), {
           nameEn: formData.iconType,
@@ -325,7 +462,7 @@ export const ProjectManagement: React.FC = () => {
       isOpen: true,
       type: 'danger',
       title: 'Delete Category',
-      message: `Are you sure you want to delete the category "${catToDelete}" globally? All projects using this category will become "Uncategorized".`,
+      message: `Are you sure you want to delete the category "${catToDelete}" globally? All projects using it will have their category cleared.`,
       confirmText: 'Delete Category',
       showCancel: true,
       onConfirm: async () => {
@@ -333,7 +470,7 @@ export const ProjectManagement: React.FC = () => {
         try {
           const projsToUpdate = projects.filter(p => p.iconType === catToDelete);
           const updatePromises = projsToUpdate.map(p => 
-            setDoc(doc(db, 'projects', p.id), { iconType: 'Uncategorized', iconTypeAr: '', customIconName: '' }, { merge: true })
+            setDoc(doc(db, 'projects', p.id), { iconType: '', iconTypeAr: '', customIconName: '' }, { merge: true })
           );
           await Promise.all(updatePromises);
 
@@ -341,7 +478,7 @@ export const ProjectManagement: React.FC = () => {
           await deleteDoc(doc(db, 'project_categories', catId)).catch(e => console.error("Could not delete from project_categories", e));
           
           if (formData.iconType === catToDelete) {
-             setFormData(prev => ({ ...prev, iconType: 'Uncategorized', iconTypeAr: '', customIconName: '' }));
+             setFormData(prev => ({ ...prev, iconType: '', iconTypeAr: '', customIconName: '' }));
           }
           showAlert("Deleted", `Category "${catToDelete}" has been deleted globally.`, "success");
         } catch (err) {
@@ -400,8 +537,9 @@ export const ProjectManagement: React.FC = () => {
     'Truck', 'Package', 'Box', 'Layers', 'Building'
   ];
 
-  const allKnownCats = Array.from(new Set(projects.map(p => p.iconType).filter(Boolean)));
-  const isCustomSelected = formData.iconType !== undefined && !allKnownCats.includes(formData.iconType);
+  const allKnownCats = Array.from(new Set(
+    projects.map(p => p.iconType).filter(t => t && t.trim() !== '' && t !== 'Uncategorized')
+  ));
 
   const getCategoryLabel = (cat: string, lang: 'EN' | 'AR' = 'EN') => {
     if (lang === 'AR') {
@@ -489,7 +627,7 @@ export const ProjectManagement: React.FC = () => {
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <label style={{ margin: 0 }}>Project Category</label>
-                      {allKnownCats.includes(formData.iconType || '') && formData.iconType !== 'Uncategorized' && (
+                      {allKnownCats.includes(formData.iconType || '') && (
                         <button 
                           type="button" 
                           onClick={() => handleDeleteCategory(formData.iconType!)}
@@ -503,30 +641,26 @@ export const ProjectManagement: React.FC = () => {
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <select 
-                        value={isCustomSelected ? 'Custom' : formData.iconType} 
-                        onChange={(e) => {
-                          if (e.target.value === 'Custom') {
-                            setFormData(prev => ({ ...prev, iconType: '' }));
-                          } else {
-                            setFormData(prev => ({ ...prev, iconType: e.target.value }));
-                          }
-                        }}
-                      >
-                        <option value="" disabled>Select a category</option>
-                        {allKnownCats.map(cat => {
-                          const labelEn = getCategoryLabel(cat, 'EN');
-                          const labelAr = getCategoryLabel(cat, 'AR');
-                          return (
-                            <option key={cat} value={labelEn}>
-                              {labelEn} {labelAr !== labelEn ? `(${labelAr})` : ''}
-                            </option>
-                          );
-                        })}
-                        <option value="Custom">+ Add New Category...</option>
-                      </select>
-                      
-                      {isCustomSelected && (
+                      {/* Custom Category Picker */}
+                      <div style={{ position: 'relative' }}>
+                        <CategoryPicker
+                          value={addingNewCat ? 'Custom' : (formData.iconType || '')}
+                          options={allKnownCats}
+                          getCategoryLabel={getCategoryLabel}
+                          renderIcon={(cat: string) => renderIcon(cat, projects.find(p => p.iconType === cat)?.customIconName)}
+                          onChange={(val) => {
+                            if (val === 'Custom') {
+                              setAddingNewCat(true);
+                              setFormData(prev => ({ ...prev, iconType: '', iconTypeAr: '', customIconName: '' }));
+                            } else {
+                              setAddingNewCat(false);
+                              setFormData(prev => ({ ...prev, iconType: val }));
+                            }
+                          }}
+                        />
+                      </div>
+
+                      {addingNewCat && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <input 

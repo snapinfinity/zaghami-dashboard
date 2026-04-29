@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart, Calendar, User, ChevronDown, ChevronUp,
   Building, Phone, Mail, ArrowLeft, CheckCircle, Clock,
-  Loader2, Package, Hash, Trash2, FileText, Globe, Briefcase
+  Loader2, Package, Hash, Trash2, FileText, Globe, Briefcase,
+  RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -195,10 +196,8 @@ export const QuoteRequests: React.FC = () => {
     }
   };
 
-  const cycleStatus = async (id: string, current: QuoteStatus) => {
-    const cycle: QuoteStatus[] = ['Pending', 'Reviewed', 'Fulfilled'];
-    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-    try { await updateDoc(doc(db, 'quote_requests', id), { status: next }); }
+  const updateStatus = async (id: string, newStatus: QuoteStatus) => {
+    try { await updateDoc(doc(db, 'quote_requests', id), { status: newStatus }); }
     catch (err) { console.error('Could not update status:', err); }
   };
 
@@ -239,7 +238,6 @@ export const QuoteRequests: React.FC = () => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      style={{ padding: '3rem 2rem', maxWidth: '1200px', margin: '0 auto' }}
     >
       {/* Back */}
       <button onClick={() => navigate('/')} className="back-btn">
@@ -248,7 +246,7 @@ export const QuoteRequests: React.FC = () => {
       </button>
 
       {/* Header */}
-      <header className="page-header" style={{ marginBottom: '2.5rem' }}>
+      <header className="page-header">
         <div className="header-icon-wrap">
           <ShoppingCart size={28} />
         </div>
@@ -261,7 +259,7 @@ export const QuoteRequests: React.FC = () => {
       </header>
 
       {/* Filter Tabs */}
-      <div className="panel table-controls" style={{ display: 'flex', padding: '1rem 1.5rem', marginBottom: '1.5rem' }}>
+      <div className="panel table-controls">
         <div className="tabs-container">
           {(['All', 'Pending', 'Reviewed', 'Fulfilled'] as FilterType[]).map((f) => (
             <button
@@ -405,7 +403,7 @@ export const QuoteRequests: React.FC = () => {
                           <div className="cart-table">
                             <div className="cart-table-header">
                               <span>Product</span>
-                              <span>Category</span>
+                              <span className="cart-category">Category</span>
                               <span className="qty-col">Qty</span>
                             </div>
                             {quote.items.map((item, idx) => (
@@ -428,7 +426,7 @@ export const QuoteRequests: React.FC = () => {
                             ))}
                             <div className="cart-table-footer">
                               <span>Total Quantity</span>
-                              <span></span>
+                              <span className="cart-category"></span>
                               <span className="qty-col total-qty">{quote.totalItems}</span>
                             </div>
                           </div>
@@ -437,23 +435,45 @@ export const QuoteRequests: React.FC = () => {
 
                       {/* Actions */}
                       <div className="quote-actions">
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <div className="quote-actions-btns">
                           {quote.customer.email && (
-                            <button
-                              className="btn btn-primary"
-                              onClick={() => window.location.href = `mailto:${quote.customer.email}`}
+                            <a
+                              href={`mailto:${quote.customer.email}?subject=Regarding your Quote Request — Zaghami`}
+                              className="btn btn-purple"
                             >
                               <Mail size={15} />
                               Reply via Email
+                            </a>
+                          )}
+
+                          {quote.status !== 'Pending' && (
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => {
+                                const statuses: QuoteStatus[] = ['Pending', 'Reviewed', 'Fulfilled'];
+                                const prev = statuses[statuses.indexOf(quote.status) - 1];
+                                updateStatus(quote.id, prev);
+                              }}
+                              title="Move status back"
+                            >
+                              <RotateCcw size={15} />
+                              Back to {quote.status === 'Fulfilled' ? 'Reviewed' : 'Pending'}
                             </button>
                           )}
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => cycleStatus(quote.id, quote.status)}
-                          >
-                            <CheckCircle size={15} />
-                            Mark as {quote.status === 'Pending' ? 'Reviewed' : quote.status === 'Reviewed' ? 'Fulfilled' : 'Pending'}
-                          </button>
+                          
+                          {quote.status !== 'Fulfilled' && (
+                            <button
+                              className="btn btn-primary"
+                              onClick={() => {
+                                const statuses: QuoteStatus[] = ['Pending', 'Reviewed', 'Fulfilled'];
+                                const next = statuses[statuses.indexOf(quote.status) + 1];
+                                updateStatus(quote.id, next);
+                              }}
+                            >
+                              <CheckCircle size={15} />
+                              Mark as {quote.status === 'Pending' ? 'Reviewed' : 'Fulfilled'}
+                            </button>
+                          )}
                         </div>
                         <button className="btn btn-danger" onClick={() => handleDelete(quote.id)}>
                           <Trash2 size={15} />

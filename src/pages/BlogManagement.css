@@ -532,6 +532,14 @@
   background-color: #fef2f2;
 }
 
+.admin-btn.duplicate {
+  color: #0EB693;
+}
+
+.admin-btn.duplicate:hover {
+  background-color: #f0fdf9;
+}
+
 @media (max-width: 900px) {
   .featured-grid {
     grid-template-columns: 1fr;

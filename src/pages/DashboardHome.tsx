@@ -52,7 +52,7 @@ export const DashboardHome: React.FC = () => {
           </div>
           <header className="dashboard-simple-header" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div className="header-titles">
-              <h1 className="header-title text-gradient">Zaghami Admin</h1>
+              <h1 className="header-title text-gradient">ZAGHAMI Admin</h1>
               <p className="header-subtitle">Welcome back. Here is your platform overview.</p>
             </div>
           </header>

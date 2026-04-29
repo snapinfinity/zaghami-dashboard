@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Calendar, Clock, ArrowRight, Star } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Calendar, Clock, ArrowRight, Star, Copy } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -261,6 +261,27 @@ export const BlogManagement: React.FC = () => {
     });
   };
 
+  const handleDuplicate = async (ins: Insight) => {
+    const copyTitleEn = `Copy of ${ins.titleEn}`;
+    const newSlug = copyTitleEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    const { id: _id, createdAt: _createdAt, ...rest } = ins;
+    try {
+      await addDoc(collection(db, 'insights'), {
+        ...rest,
+        titleEn: copyTitleEn,
+        titleAr: `نسخة من ${ins.titleAr}`,
+        slug: newSlug,
+        status: 'Draft',      // always starts as Draft
+        isFeatured: false,    // never clone featured state
+        createdAt: serverTimestamp()
+      });
+      showAlert('Duplicated', `"${ins.titleEn}" has been duplicated as a Draft.`, 'success');
+    } catch (err) {
+      console.error('Error duplicating post:', err);
+      showAlert('Error', 'Failed to duplicate post.', 'danger');
+    }
+  };
+
   const filteredInsights = insights.filter(ins => {
     const matchesCategory = filterType === 'All Categories' || ins.type === filterType.toUpperCase();
     const matchesStatus = filterStatus === 'All Status' || ins.status === filterStatus;
@@ -306,12 +327,23 @@ export const BlogManagement: React.FC = () => {
           >
             <div className="editor-header">
               <h2 className="text-xl font-bold">{formData.id ? 'Edit Post' : 'Create New Post'}</h2>
-              <button className="btn-close" onClick={handleCloseEditor} type="button">
-                <X size={24} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button
+                  type="submit"
+                  form="blog-editor-form"
+                  className="btn btn-primary"
+                  disabled={isSaving}
+                  style={{ fontSize: '0.9rem', padding: '0.55rem 1.1rem' }}
+                >
+                  {isSaving ? 'Saving…' : formData.id ? 'Save Changes' : 'Publish Post'}
+                </button>
+                <button className="btn-close" onClick={handleCloseEditor} type="button">
+                  <X size={24} />
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSave}>
+            <form id="blog-editor-form" onSubmit={handleSave}>
               <div className="form-section-global">
                 <h3 className="section-label">Global Configuration</h3>
                 <div className="form-grid">
@@ -449,6 +481,13 @@ export const BlogManagement: React.FC = () => {
                  <button onClick={() => navigate('?mode=edit')} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                    <Edit2 size={16} /> Edit Post
                  </button>
+                 <button
+                   onClick={() => { if (formData as Insight) handleDuplicate(formData as Insight); }}
+                   className="btn btn-secondary"
+                   style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                 >
+                   <Copy size={16} /> Duplicate
+                 </button>
                  <button onClick={() => {
                    if (formData.id) {
                      handleDelete(formData.id, formData.titleEn!);
@@ -550,6 +589,9 @@ export const BlogManagement: React.FC = () => {
                             <button className="admin-btn edit" onClick={(e) => { e.stopPropagation(); handleOpenEditor(ins); }} title="Edit Post">
                               <Edit2 size={16} />
                             </button>
+                            <button className="admin-btn duplicate" onClick={(e) => { e.stopPropagation(); handleDuplicate(ins); }} title="Duplicate as Draft">
+                              <Copy size={15} />
+                            </button>
                             <button className="admin-btn delete" onClick={(e) => { e.stopPropagation(); handleDelete(ins.id, ins.titleEn); }} title="Delete Post">
                               <Trash2 size={16} />
                             </button>
@@ -598,6 +640,9 @@ export const BlogManagement: React.FC = () => {
                           <div className="card-admin-overlay">
                             <button className="admin-btn edit" onClick={(e) => { e.stopPropagation(); handleOpenEditor(ins); }} title="Edit Post">
                               <Edit2 size={16} />
+                            </button>
+                            <button className="admin-btn duplicate" onClick={(e) => { e.stopPropagation(); handleDuplicate(ins); }} title="Duplicate as Draft">
+                              <Copy size={15} />
                             </button>
                             <button className="admin-btn delete" onClick={(e) => { e.stopPropagation(); handleDelete(ins.id, ins.titleEn); }} title="Delete Post">
                               <Trash2 size={16} />

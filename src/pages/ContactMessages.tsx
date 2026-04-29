@@ -315,7 +315,12 @@ export const ContactMessages: React.FC = () => {
                       </div>
                       <div className="message-actions" style={{ padding: '0 1.5rem 1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                          <button className="btn btn-primary" onClick={() => window.location.href = `mailto:${msg.email}`}>Reply via Email</button>
+                          <a 
+                            href={`mailto:${msg.email}?subject=Regarding your inquiry — Zaghami`} 
+                            className="btn btn-primary"
+                          >
+                            Reply via Email
+                          </a>
                           <button className="btn btn-secondary" onClick={() => toggleStatus(msg.id, msg.status)}>
                             Mark as {msg.status === 'Resolved' ? 'Unresolved' : 'Resolved'}
                           </button>

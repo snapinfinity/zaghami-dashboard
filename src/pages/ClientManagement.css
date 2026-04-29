@@ -63,8 +63,11 @@
 
 .client-admin-overlay {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   opacity: 0;
   transition: opacity 0.2s ease;
   z-index: 10;
@@ -73,6 +76,32 @@
 .client-card:hover .client-admin-overlay {
   opacity: 1;
 }
+
+/* ── Logo action buttons ────────────────────────────────── */
+.logo-action-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-action-btn:hover {
+  transform: scale(1.12);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.edit-btn { color: var(--accent-teal); }
+.delete-btn { color: #ef4444; }
+.globe-btn { color: #3b82f6; }
 
 .upload-card {
   border: 2px dashed var(--border-color);

@@ -46,6 +46,22 @@
   border-color: var(--accent-teal);
 }
 
+.filter-separator {
+  color: var(--text-secondary);
+  font-size: 1.4rem;
+  opacity: 0.45;
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.filter-subcat-select {
+  border-color: var(--accent-teal) !important;
+  background: var(--accent-teal-light) !important;
+  color: var(--accent-teal) !important;
+  font-weight: 500;
+}
+
 /* ── Grid ────────────────────────────────── */
 .products-grid {
   display: grid;
@@ -386,5 +402,306 @@
 @media (max-width: 480px) {
   .products-grid {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ════════════════════════════════════════
+   SubcatManager — inline subcategory editor
+   ════════════════════════════════════════ */
+.sm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 15, 22, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.sm-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+/* Header */
+.sm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  gap: 1rem;
+}
+
+.sm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--accent-teal);
+}
+
+.sm-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sm-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.sm-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.sm-close-btn:hover { color: var(--text-primary); }
+
+/* Tree area */
+.sm-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sm-empty {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  padding: 1rem;
+  text-align: center;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+/* Node rows */
+.sm-node-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s;
+  min-height: 34px;
+}
+
+.sm-node-row:hover {
+  background: var(--bg-tertiary);
+}
+
+.sm-node-icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent-teal);
+  flex-shrink: 0;
+}
+
+.sm-node-label {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.sm-node-ar {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.sm-node-actions {
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sm-node-row:hover .sm-node-actions { opacity: 1; }
+
+/* Buttons */
+.sm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.sm-btn-add {
+  background: var(--accent-teal-light);
+  color: var(--accent-teal);
+  border-color: var(--accent-teal);
+}
+
+.sm-btn-del {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.sm-btn-save {
+  background: var(--accent-teal);
+  color: white;
+  border-color: var(--accent-teal);
+}
+
+.sm-btn-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sm-btn-cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+/* Add forms */
+.sm-add-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-teal);
+  margin: 0.25rem 0;
+  flex-wrap: wrap;
+}
+
+.sm-add-form--root {
+  margin-bottom: 0.5rem;
+}
+
+.sm-add-form input {
+  flex: 1;
+  min-width: 100px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.sm-add-form input:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+}
+
+/* Add root button */
+.sm-add-root-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--accent-teal);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--accent-teal);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  width: 100%;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.sm-add-root-btn:hover {
+  background: var(--accent-teal-light);
+}
+
+/* Footer */
+.sm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.sm-unsaved {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: #f59e0b;
+}
+
+.sm-btn-cancel-footer {
+  padding: 0.6rem 1.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.15s;
+}
+
+.sm-btn-cancel-footer:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.sm-btn-save-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent-teal);
+  color: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: opacity 0.15s;
+}
+
+.sm-btn-save-footer:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sm-btn-save-footer:hover:not(:disabled) { opacity: 0.88; }
+
+@media (max-width: 768px) {
+  .sm-panel {
+    max-height: 88vh;
+  }
+  .sm-add-form {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
