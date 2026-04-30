@@ -400,8 +400,16 @@ export const ProductManagement: React.FC = () => {
       showAlert('Missing Category', 'Please select a parent category.', 'warning');
       return;
     }
+    if (availableSubcats.length > 0 && !formData.subcategoryId) {
+      showAlert('Missing Subcategory', 'Please select a subcategory.', 'warning');
+      return;
+    }
     if (!formData.nameEn.trim() || !formData.nameAr.trim()) {
       showAlert('Missing Names', 'Please provide both English and Arabic names.', 'warning');
+      return;
+    }
+    if (!formData.descriptionEn.trim() || !formData.descriptionAr.trim()) {
+      showAlert('Missing Descriptions', 'Please provide both English and Arabic descriptions.', 'warning');
       return;
     }
     if (!formData.imageUrl) {
@@ -648,7 +656,7 @@ export const ProductManagement: React.FC = () => {
                 {formData.categoryId && (
                   <div className="prod-form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label style={{ margin: 0 }}>Subcategory <span style={{ opacity: 0.6, fontWeight: 400 }}>— optional</span></label>
+                      <label style={{ margin: 0 }}>Subcategory</label>
                       <button
                         type="button"
                         onClick={() => setSubcatManagerCatId(formData.categoryId)}
@@ -659,10 +667,11 @@ export const ProductManagement: React.FC = () => {
                     </div>
                     {availableSubcats.length > 0 ? (
                       <select
+                        required
                         value={formData.subcategoryId}
                         onChange={e => setFormData(p => ({ ...p, subcategoryId: e.target.value }))}
                       >
-                        <option value="">— None (top-level) —</option>
+                        <option value="" disabled>— Select Subcategory —</option>
                         {availableSubcats.map(s => (
                           <option key={s.id} value={s.id}>
                             {'\u00A0'.repeat(s.depth * 4)}{s.depth > 0 ? '↳ ' : ''}{s.labelEn}{s.labelAr ? ` / ${s.labelAr}` : ''}
@@ -705,6 +714,7 @@ export const ProductManagement: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    required
                     value={formData.slug || ''}
                     onChange={e => {
                       setSlugManuallyEdited(true);
@@ -735,6 +745,7 @@ export const ProductManagement: React.FC = () => {
                 <div className="prod-form-group">
                   <label>Description (English)</label>
                   <textarea
+                    required
                     placeholder="Brief description of the product..."
                     value={formData.descriptionEn}
                     onChange={e => setFormData(p => ({ ...p, descriptionEn: e.target.value }))}
@@ -758,6 +769,7 @@ export const ProductManagement: React.FC = () => {
                 <div className="prod-form-group">
                   <label>Description (Arabic — الوصف)</label>
                   <textarea
+                    required
                     dir="rtl"
                     placeholder="وصف موجز للمنتج..."
                     value={formData.descriptionAr}

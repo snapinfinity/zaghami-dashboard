@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trash2, ArrowLeft, X, Loader2, UploadCloud, FileText,
-  Download, GripVertical, ArrowUpDown, Check, RotateCcw
+  Download, GripVertical, ArrowUpDown, Check, RotateCcw, Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -178,37 +178,60 @@ export const TechnicalResources: React.FC = () => {
   };
 
   /* ── File upload ───────────────────────────────────────────────── */
+  const startUpload = async (file: File) => {
+    setIsUploadingFile(true);
+    let computedSize = '';
+    if (file.size < 1024 * 1024) {
+      computedSize = (file.size / 1024).toFixed(1) + ' KB';
+    } else {
+      computedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+    try {
+      const storageRef = ref(storage, `technical_resources/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => {
+          console.error('Upload failed:', error);
+          setIsUploadingFile(false);
+          showAlert('Upload Failed', 'File upload failed.', 'danger');
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setFormData(prev => ({ ...prev, fileUrl: downloadURL, size: computedSize }));
+          setIsUploadingFile(false);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+      setIsUploadingFile(false);
+      showAlert('Error', 'An error occurred starting the file upload.', 'danger');
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setIsUploadingFile(true);
-      let computedSize = '';
-      if (file.size < 1024 * 1024) {
-        computedSize = (file.size / 1024).toFixed(1) + ' KB';
-      } else {
-        computedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-      }
-      try {
-        const storageRef = ref(storage, `technical_resources/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        uploadTask.on(
-          'state_changed',
-          null,
-          (error) => {
-            console.error('Upload failed:', error);
-            setIsUploadingFile(false);
-            showAlert('Upload Failed', 'File upload failed.', 'danger');
-          },
-          async () => {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            setFormData(prev => ({ ...prev, fileUrl: downloadURL, size: computedSize }));
-            setIsUploadingFile(false);
+      const fileName = file.name.toLowerCase();
+      const isOfficeFile = fileName.endsWith('.doc') || fileName.endsWith('.docx') || 
+                           fileName.endsWith('.xls') || fileName.endsWith('.xlsx');
+
+      if (isOfficeFile) {
+        setAlertConfig({
+          isOpen: true,
+          type: 'warning',
+          title: 'Format Compatibility',
+          message: 'Word and Excel files typically trigger a download rather than viewing in-browser. Do you want to continue with this file?',
+          confirmText: 'Continue Upload',
+          showCancel: true,
+          onConfirm: () => {
+            closeAlert();
+            startUpload(file);
           }
-        );
-      } catch (err) {
-        console.error(err);
-        setIsUploadingFile(false);
-        showAlert('Error', 'An error occurred starting the file upload.', 'danger');
+        });
+      } else {
+        startUpload(file);
       }
     }
   };
@@ -398,7 +421,7 @@ export const TechnicalResources: React.FC = () => {
               {!sortMode && (
                 <div className="resource-actions">
                   <a href={resource.fileUrl} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
-                    <Download size={16} />
+                    <Eye size={16} />
                     <span>Preview</span>
                   </a>
                   <button
