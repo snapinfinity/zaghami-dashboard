@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trash2, ArrowLeft, X, Loader2, UploadCloud, FileText,
-  Download, GripVertical, ArrowUpDown, Check, RotateCcw, Eye
+  GripVertical, ArrowUpDown, Check, RotateCcw, Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
