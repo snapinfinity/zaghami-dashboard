@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, X, Loader2, UploadCloud, Pencil, Trash2, ImageOff,
-  ChevronRight, ChevronDown, Plus, FolderTree, Check, FolderOpen, Folder
+  ChevronRight, ChevronDown, Plus, FolderTree, Check, FolderOpen, Folder,
+  ArrowUp, ArrowDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -75,6 +76,28 @@ const deleteNodeFromTree = (nodes: SubcategoryNode[], id: string): SubcategoryNo
     .filter(n => n.id !== id)
     .map(n => ({ ...n, children: deleteNodeFromTree(n.children, id) }));
 
+/* ─── Utility: move a node up or down in its sibling array ──────── */
+const moveNodeInTree = (nodes: SubcategoryNode[], id: string, direction: 'up' | 'down'): SubcategoryNode[] => {
+  const index = nodes.findIndex(n => n.id === id);
+  if (index !== -1) {
+    if (direction === 'up' && index > 0) {
+      const newNodes = [...nodes];
+      [newNodes[index - 1], newNodes[index]] = [newNodes[index], newNodes[index - 1]];
+      return newNodes;
+    }
+    if (direction === 'down' && index < nodes.length - 1) {
+      const newNodes = [...nodes];
+      [newNodes[index], newNodes[index + 1]] = [newNodes[index + 1], newNodes[index]];
+      return newNodes;
+    }
+    return nodes;
+  }
+  return nodes.map(n => ({
+    ...n,
+    children: moveNodeInTree(n.children, id, direction)
+  }));
+};
+
 /* ─── Utility: add a child to a node by parent id ───────────────── */
 const addChildToNode = (
   nodes: SubcategoryNode[],
@@ -95,9 +118,13 @@ const addChildToNode = (
 interface TreeNodeProps {
   node: SubcategoryNode;
   depth: number;
+  isFirst: boolean;
+  isLast: boolean;
   onAdd: (parentId: string) => void;
   onEdit: (node: SubcategoryNode) => void;
   onDelete: (node: SubcategoryNode) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
   editingNodeId: string | null;
   editForm: { nameEn: string; nameAr: string };
   onEditFormChange: (f: { nameEn: string; nameAr: string }) => void;
@@ -111,8 +138,8 @@ interface TreeNodeProps {
 }
 
 const SubcategoryTreeNode: React.FC<TreeNodeProps> = ({
-  node, depth,
-  onAdd, onEdit, onDelete,
+  node, depth, isFirst, isLast,
+  onAdd, onEdit, onDelete, onMoveUp, onMoveDown,
   editingNodeId, editForm, onEditFormChange, onEditSave, onEditCancel,
   addingChildOf, addForm, onAddFormChange, onAddSave, onAddCancel
 }) => {
@@ -159,6 +186,22 @@ const SubcategoryTreeNode: React.FC<TreeNodeProps> = ({
 
         {/* Actions */}
         <div className="subcat-node-actions">
+          <button
+            className="subcat-action-btn subcat-move-btn"
+            onClick={() => onMoveUp(node.id)}
+            disabled={isFirst}
+            title="Move up"
+          >
+            <ArrowUp size={12} />
+          </button>
+          <button
+            className="subcat-action-btn subcat-move-btn"
+            onClick={() => onMoveDown(node.id)}
+            disabled={isLast}
+            title="Move down"
+          >
+            <ArrowDown size={12} />
+          </button>
           <button
             className="subcat-action-btn subcat-add-btn"
             onClick={() => { setExpanded(true); onAdd(node.id); }}
@@ -235,14 +278,18 @@ const SubcategoryTreeNode: React.FC<TreeNodeProps> = ({
             exit={{ opacity: 0, height: 0 }}
             style={{ overflow: 'hidden' }}
           >
-            {node.children.map(child => (
+            {node.children.map((child, index) => (
               <SubcategoryTreeNode
                 key={child.id}
                 node={child}
                 depth={depth + 1}
+                isFirst={index === 0}
+                isLast={index === node.children.length - 1}
                 onAdd={onAdd}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onMoveUp={onMoveUp}
+                onMoveDown={onMoveDown}
                 editingNodeId={editingNodeId}
                 editForm={editForm}
                 onEditFormChange={onEditFormChange}
@@ -397,6 +444,15 @@ const SubcategoryPanel: React.FC<SubcategoryPanelProps> = ({
 
   const handleEditCancel = () => setEditingNodeId(null);
 
+  /* ── Move handlers ───────────────────────────────────────────── */
+  const handleMoveUp = (id: string) => {
+    markDirty(moveNodeInTree(tree, id, 'up'));
+  };
+
+  const handleMoveDown = (id: string) => {
+    markDirty(moveNodeInTree(tree, id, 'down'));
+  };
+
   /* ── Delete handler ──────────────────────────────────────────── */
   const handleDelete = (node: SubcategoryNode) => {
     const hasChildren = node.children.length > 0;
@@ -525,14 +581,18 @@ const SubcategoryPanel: React.FC<SubcategoryPanelProps> = ({
           </div>
         )}
 
-        {tree.map(node => (
+        {tree.map((node, index) => (
           <SubcategoryTreeNode
             key={node.id}
             node={node}
             depth={0}
+            isFirst={index === 0}
+            isLast={index === tree.length - 1}
             onAdd={handleStartAdd}
             onEdit={handleStartEdit}
             onDelete={handleDelete}
+            onMoveUp={handleMoveUp}
+            onMoveDown={handleMoveDown}
             editingNodeId={editingNodeId}
             editForm={editForm}
             onEditFormChange={setEditForm}
