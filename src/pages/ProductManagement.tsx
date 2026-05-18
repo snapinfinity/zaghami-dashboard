@@ -221,10 +221,11 @@ export interface Product {
   descriptionEn: string;
   descriptionAr: string;
   imageUrl: string;
+  keywords?: string;
   createdAt?: any;
 }
 
-const EMPTY_FORM = { slug: '', categoryId: '', subcategoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '' };
+const EMPTY_FORM = { slug: '', categoryId: '', subcategoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '', keywords: '' };
 
 /* ─── Component ──────────────────────────────────────────────────── */
 export const ProductManagement: React.FC = () => {
@@ -380,7 +381,8 @@ export const ProductManagement: React.FC = () => {
       nameAr: prod.nameAr,
       descriptionEn: prod.descriptionEn || '',
       descriptionAr: prod.descriptionAr || '',
-      imageUrl: prod.imageUrl || ''
+      imageUrl: prod.imageUrl || '',
+      keywords: prod.keywords || ''
     });
     setSlugManuallyEdited(!!(prod.slug?.trim()));
     setIsModalOpen(true);
@@ -426,15 +428,24 @@ export const ProductManagement: React.FC = () => {
         ? (formData.slug?.trim() || generateSlug(formData.nameEn.trim()))
         : generateSlug(formData.nameEn.trim());
 
+      // Find category names for Algolia text indexing
+      const parentCat = categories.find(c => c.id === formData.categoryId);
+      const subCat = formData.subcategoryId ? availableSubcats.find(s => s.id === formData.subcategoryId) : null;
+
       const dataToSave: Record<string, any> = {
         slug,
         categoryId: formData.categoryId,
+        categoryNameEn: parentCat?.nameEn || '',
+        categoryNameAr: parentCat?.nameAr || '',
         nameEn: formData.nameEn.trim(),
         nameAr: formData.nameAr.trim(),
         descriptionEn: formData.descriptionEn.trim(),
         descriptionAr: formData.descriptionAr.trim(),
         imageUrl: formData.imageUrl,
+        keywords: (formData.keywords || '').trim(),
         subcategoryId: formData.subcategoryId || '',
+        subcategoryNameEn: subCat?.labelEn || '',
+        subcategoryNameAr: subCat?.labelAr || '',
       };
 
       if (editingId) {
@@ -775,6 +786,20 @@ export const ProductManagement: React.FC = () => {
                     value={formData.descriptionAr}
                     onChange={e => setFormData(p => ({ ...p, descriptionAr: e.target.value }))}
                   />
+                </div>
+
+                {/* Keywords */}
+                <div className="prod-form-group">
+                  <label>Keywords (comma-separated)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. wire, voltage, copper"
+                    value={formData.keywords}
+                    onChange={e => setFormData(p => ({ ...p, keywords: e.target.value }))}
+                  />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem', opacity: 0.8 }}>
+                    Used to improve search results.
+                  </div>
                 </div>
 
                 {/* Image */}

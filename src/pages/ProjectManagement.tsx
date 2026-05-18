@@ -291,6 +291,7 @@ export const ProjectManagement: React.FC = () => {
   const [currentLang, setCurrentLang] = useState<'EN' | 'AR'>('EN');
   const [formData, setFormData] = useState<Partial<Project>>(emptyProject);
   const [addingNewCat, setAddingNewCat] = useState(false);
+  const [editCatData, setEditCatData] = useState<{oldNameEn: string, oldNameAr: string, oldIconName: string, nameEn: string, nameAr: string, iconName: string} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
@@ -424,7 +425,9 @@ export const ProjectManagement: React.FC = () => {
           nameEn: formData.iconType,
           nameAr: formData.iconTypeAr || getCategoryLabel(formData.iconType, 'AR'),
           iconName: formData.customIconName || ''
-        }, { merge: true });
+        }, { merge: true }).catch(e => {
+          console.error("Could not update project_categories due to permissions", e);
+        });
       }
 
       handleCloseEditor();
@@ -487,6 +490,75 @@ export const ProjectManagement: React.FC = () => {
         }
       }
     });
+  };
+
+  const handleEditCategory = (catName: string) => {
+    const proj = projects.find(p => p.iconType === catName);
+    const initialEn = getCategoryLabel(catName, 'EN');
+    const initialAr = proj?.iconTypeAr || getCategoryLabel(catName, 'AR');
+    const initialIcon = proj?.customIconName || '';
+    
+    setEditCatData({
+      oldNameEn: catName,
+      oldNameAr: initialAr,
+      oldIconName: initialIcon,
+      nameEn: initialEn,
+      nameAr: initialAr,
+      iconName: initialIcon
+    });
+  };
+
+  const saveCategoryEdit = async () => {
+    if (!editCatData || !editCatData.nameEn.trim()) {
+      showAlert("Missing Fields", "Category Name (English) is required.", "warning");
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      const projsToUpdate = projects.filter(p => p.iconType === editCatData.oldNameEn);
+      
+      const updatePromises = projsToUpdate.map(p => 
+        setDoc(doc(db, 'projects', p.id), { 
+          iconType: editCatData.nameEn, 
+          iconTypeAr: editCatData.nameAr || editCatData.nameEn, 
+          customIconName: editCatData.iconName 
+        }, { merge: true })
+      );
+      await Promise.all(updatePromises);
+
+      // Update project_categories
+      const oldCatId = editCatData.oldNameEn.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
+      const newCatId = editCatData.nameEn.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
+      
+      if (oldCatId !== newCatId) {
+         await deleteDoc(doc(db, 'project_categories', oldCatId)).catch(e => console.error(e));
+      }
+
+      await setDoc(doc(db, 'project_categories', newCatId), {
+        nameEn: editCatData.nameEn,
+        nameAr: editCatData.nameAr || editCatData.nameEn,
+        iconName: editCatData.iconName
+      }, { merge: true }).catch(e => {
+        console.error("Could not update project_categories due to permissions", e);
+      });
+
+      if (formData.iconType === editCatData.oldNameEn) {
+         setFormData(prev => ({ 
+           ...prev, 
+           iconType: editCatData.nameEn, 
+           iconTypeAr: editCatData.nameAr || editCatData.nameEn, 
+           customIconName: editCatData.iconName 
+         }));
+      }
+
+      setEditCatData(null);
+      showAlert("Success", "Category updated globally.", "success");
+    } catch (err: any) {
+      console.error("Error updating category: ", err);
+      showAlert("Error", `Failed to update category. Details: ${err.message || err}`, "danger");
+    }
+    setIsSaving(false);
   };
 
   const renderIcon = (type: string, customIconName?: string) => {
@@ -627,74 +699,140 @@ export const ProjectManagement: React.FC = () => {
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <label style={{ margin: 0 }}>Project Category</label>
-                      {allKnownCats.includes(formData.iconType || '') && (
-                        <button 
-                          type="button" 
-                          onClick={() => handleDeleteCategory(formData.iconType!)}
-                          style={{
-                            background: 'none', border: 'none', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', padding: 0
-                          }}
-                          title="Delete this category globally"
-                        >
-                          <Trash2 size={14} /> Delete '{formData.iconType}'
-                        </button>
+                      {allKnownCats.includes(formData.iconType || '') && !editCatData && (
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                          <button 
+                            type="button" 
+                            onClick={() => handleEditCategory(formData.iconType!)}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', padding: 0
+                            }}
+                            title="Edit this category globally"
+                          >
+                            <Edit2 size={14} /> Edit '{formData.iconType}'
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => handleDeleteCategory(formData.iconType!)}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', fontSize: '0.8rem', padding: 0
+                            }}
+                            title="Delete this category globally"
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
                       )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {/* Custom Category Picker */}
-                      <div style={{ position: 'relative' }}>
-                        <CategoryPicker
-                          value={addingNewCat ? 'Custom' : (formData.iconType || '')}
-                          options={allKnownCats}
-                          getCategoryLabel={getCategoryLabel}
-                          renderIcon={(cat: string) => renderIcon(cat, projects.find(p => p.iconType === cat)?.customIconName)}
-                          onChange={(val) => {
-                            if (val === 'Custom') {
-                              setAddingNewCat(true);
-                              setFormData(prev => ({ ...prev, iconType: '', iconTypeAr: '', customIconName: '' }));
-                            } else {
-                              setAddingNewCat(false);
-                              setFormData(prev => ({ ...prev, iconType: val }));
-                            }
-                          }}
-                        />
-                      </div>
-
-                      {addingNewCat && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <input 
-                              type="text" 
-                              name="iconType" 
-                              value={formData.iconType || ''} 
-                              onChange={handleChange}
-                              placeholder="Category Name (English)"
-                              autoFocus
-                              required
-                              style={{ flex: 1 }}
-                            />
-                            <input 
-                              type="text" 
-                              name="iconTypeAr" 
-                              value={formData.iconTypeAr || ''} 
-                              onChange={handleChange}
-                              placeholder="اسم الفئة (Arabic)"
-                              required
-                              style={{ flex: 1, direction: 'rtl' }}
+                      {editCatData ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--accent-teal)' }}>
+                           <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Edit Category (Global)</h4>
+                           <div style={{ display: 'flex', gap: '0.5rem' }}>
+                             <input 
+                                type="text" 
+                                value={editCatData.nameEn} 
+                                onChange={e => setEditCatData(prev => prev ? {...prev, nameEn: e.target.value} : null)}
+                                placeholder="Category Name (English)"
+                                style={{ flex: 1 }}
+                             />
+                             <input 
+                                type="text" 
+                                value={editCatData.nameAr} 
+                                onChange={e => setEditCatData(prev => prev ? {...prev, nameAr: e.target.value} : null)}
+                                placeholder="اسم الفئة (Arabic)"
+                                style={{ flex: 1, direction: 'rtl' }}
+                             />
+                           </div>
+                           <select 
+                              value={editCatData.iconName} 
+                              onChange={e => setEditCatData(prev => prev ? {...prev, iconName: e.target.value} : null)}
+                              style={{ width: '100%' }}
+                           >
+                             <option value="">Select Icon Symbol</option>
+                             {AVAILABLE_CUSTOM_ICONS.map(icon => (
+                                <option key={icon} value={icon}>{icon} Icon</option>
+                             ))}
+                           </select>
+                           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                              <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                onClick={saveCategoryEdit} 
+                                style={{ flex: 1, padding: '0.4rem', fontSize: '0.85rem' }} 
+                                disabled={isSaving || (editCatData.nameEn === editCatData.oldNameEn && editCatData.nameAr === editCatData.oldNameAr && editCatData.iconName === editCatData.oldIconName)}
+                              >
+                                {isSaving ? 'Saving...' : 'Save Changes'}
+                              </button>
+                              <button type="button" className="btn btn-secondary" onClick={() => setEditCatData(null)} style={{ flex: 1, padding: '0.4rem', fontSize: '0.85rem' }} disabled={isSaving}>Cancel</button>
+                           </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Custom Category Picker */}
+                          <div style={{ position: 'relative' }}>
+                            <CategoryPicker
+                              value={addingNewCat ? 'Custom' : (formData.iconType || '')}
+                              options={allKnownCats}
+                              getCategoryLabel={getCategoryLabel}
+                              renderIcon={(cat: string) => renderIcon(cat, projects.find(p => p.iconType === cat)?.customIconName)}
+                              onChange={(val) => {
+                                if (val === 'Custom') {
+                                  setAddingNewCat(true);
+                                  setFormData(prev => ({ ...prev, iconType: '', iconTypeAr: '', customIconName: '' }));
+                                } else {
+                                  setAddingNewCat(false);
+                                  const proj = projects.find(p => p.iconType === val);
+                                  const initialAr = proj?.iconTypeAr || getCategoryLabel(val, 'AR');
+                                  const initialIcon = proj?.customIconName || '';
+                                  setFormData(prev => ({ 
+                                    ...prev, 
+                                    iconType: val,
+                                    iconTypeAr: initialAr,
+                                    customIconName: initialIcon
+                                  }));
+                                }
+                              }}
                             />
                           </div>
-                          <select 
-                            name="customIconName" 
-                            value={formData.customIconName || ''} 
-                            onChange={handleChange}
-                            style={{ width: '100%' }}
-                          >
-                            <option value="">Select Icon Symbol</option>
-                            {AVAILABLE_CUSTOM_ICONS.map(icon => (
-                              <option key={icon} value={icon}>{icon} Icon</option>
-                            ))}
-                          </select>
-                        </div>
+
+                          {addingNewCat && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input 
+                                  type="text" 
+                                  name="iconType" 
+                                  value={formData.iconType || ''} 
+                                  onChange={handleChange}
+                                  placeholder="Category Name (English)"
+                                  autoFocus
+                                  required
+                                  style={{ flex: 1 }}
+                                />
+                                <input 
+                                  type="text" 
+                                  name="iconTypeAr" 
+                                  value={formData.iconTypeAr || ''} 
+                                  onChange={handleChange}
+                                  placeholder="اسم الفئة (Arabic)"
+                                  required
+                                  style={{ flex: 1, direction: 'rtl' }}
+                                />
+                              </div>
+                              <select 
+                                name="customIconName" 
+                                value={formData.customIconName || ''} 
+                                onChange={handleChange}
+                                style={{ width: '100%' }}
+                              >
+                                <option value="">Select Icon Symbol</option>
+                                {AVAILABLE_CUSTOM_ICONS.map(icon => (
+                                  <option key={icon} value={icon}>{icon} Icon</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

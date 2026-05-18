@@ -132,6 +132,12 @@ input:focus, textarea:focus, select:focus {
   transition: all var(--transition-fast);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .btn-primary {
   background-color: var(--accent-teal);
   color: #fff;
