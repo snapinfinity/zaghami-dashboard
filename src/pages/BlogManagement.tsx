@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Calendar, Clock, ArrowRight, Star, Copy } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Calendar, Clock, ArrowRight, Star, Copy, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -30,6 +30,8 @@ export interface Insight {
   createdAt?: any;
 }
 
+const PAGE_SIZE = 15; // 5 rows × 3 columns
+
 const emptyInsight: Partial<Insight> = {
   slug: '',
   type: 'BLOG',
@@ -49,6 +51,8 @@ export const BlogManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('All Categories');
   const [filterStatus, setFilterStatus] = useState('All Status');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Editor State
   const [viewMode, setViewMode] = useState<'LIST' | 'EDIT' | 'VIEW'>('LIST');
@@ -285,8 +289,19 @@ export const BlogManagement: React.FC = () => {
   const filteredInsights = insights.filter(ins => {
     const matchesCategory = filterType === 'All Categories' || ins.type === filterType.toUpperCase();
     const matchesStatus = filterStatus === 'All Status' || ins.status === filterStatus;
-    return matchesCategory && matchesStatus;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch = !q
+      || ins.titleEn?.toLowerCase().includes(q)
+      || ins.titleAr?.toLowerCase().includes(q)
+      || ins.summaryEn?.toLowerCase().includes(q);
+    return matchesCategory && matchesStatus && matchesSearch;
   });
+
+  useEffect(() => { setCurrentPage(1); }, [filterType, filterStatus, searchQuery]);
+
+  const nonFeaturedInsights = filteredInsights.filter(i => !i.isFeatured);
+  const totalPages = Math.ceil(nonFeaturedInsights.length / PAGE_SIZE);
+  const pagedInsights = nonFeaturedInsights.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <motion.div 
@@ -556,7 +571,22 @@ export const BlogManagement: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <div className="table-controls panel" style={{ display: 'flex', padding: '1rem 1.5rem', marginBottom: '1.5rem', gap: '1rem' }}>
+            <div className="table-controls panel" style={{ display: 'flex', padding: '1rem 1.5rem', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
+              <div className="blog-search-wrap">
+                <Search size={15} className="blog-search-icon" />
+                <input
+                  type="text"
+                  className="blog-search-input"
+                  placeholder="Search blogs..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button className="blog-search-clear" onClick={() => setSearchQuery('')}>
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
               <div className="filter-controls">
                 <select className="status-filter" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                   <option value="All Status">All Status</option>
@@ -631,11 +661,11 @@ export const BlogManagement: React.FC = () => {
                   </div>
                 )}
 
-                {filteredInsights.filter(i => !i.isFeatured).length > 0 && (
+                {nonFeaturedInsights.length > 0 && (
                   <div className="grid-section">
                     <h2 className="grid-section-title">Latest Insights</h2>
                     <div className="latest-grid">
-                      {filteredInsights.filter(i => !i.isFeatured).map(ins => (
+                      {pagedInsights.map(ins => (
                         <div key={ins.id} className="insight-card" onClick={() => handleOpenView(ins)} style={{ cursor: 'pointer' }}>
                           <div className="card-admin-overlay">
                             <button className="admin-btn edit" onClick={(e) => { e.stopPropagation(); handleOpenEditor(ins); }} title="Edit Post">
@@ -680,6 +710,31 @@ export const BlogManagement: React.FC = () => {
                         </div>
                       ))}
                     </div>
+
+                    {totalPages > 1 && (
+                      <div className="blog-pagination">
+                        <button
+                          className="btn btn-secondary pagination-btn"
+                          onClick={() => setCurrentPage(p => p - 1)}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft size={16} />
+                          Previous
+                        </button>
+                        <span className="pagination-info">
+                          Page {currentPage} of {totalPages}
+                          <span className="pagination-count"> &mdash; {nonFeaturedInsights.length} posts</span>
+                        </span>
+                        <button
+                          className="btn btn-secondary pagination-btn"
+                          onClick={() => setCurrentPage(p => p + 1)}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </>

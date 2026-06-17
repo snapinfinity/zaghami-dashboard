@@ -350,6 +350,83 @@
   opacity: 0.9;
 }
 
+/* ── Search ─────────────────────────────── */
+.prod-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 180px;
+  margin-left: auto;
+}
+
+.prod-search-icon {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.prod-search-input {
+  width: 100%;
+  padding: 0.7rem 2.2rem 0.7rem 2.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color var(--transition-fast);
+}
+
+.prod-search-input::placeholder { color: var(--text-secondary); }
+.prod-search-input:focus { outline: none; border-color: var(--accent-teal); }
+
+.prod-search-clear {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0.2rem;
+  border-radius: 50%;
+  transition: color var(--transition-fast);
+}
+.prod-search-clear:hover { color: var(--text-primary); }
+
+/* ── Pagination ──────────────────────────── */
+.prod-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.prod-pagination .pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.prod-pagination .pagination-info {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 160px;
+  text-align: center;
+}
+
+.prod-pagination .pagination-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
 /* ════════════════════════════════════════
    Responsive
    ════════════════════════════════════════ */
@@ -370,6 +447,10 @@
   .products-filter select {
     min-width: unset;
     width: 100%;
+  }
+
+  .prod-search-wrap {
+    margin-left: 0;
   }
 
   .products-grid {

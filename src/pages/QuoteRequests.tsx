@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart, Calendar, User, ChevronDown, ChevronUp,
   Building, Phone, Mail, ArrowLeft, CheckCircle, Clock,
-  Loader2, Package, Hash, Trash2, FileText, Globe, Briefcase,
+  Loader2, Package, Trash2, FileText, Globe, Briefcase,
   RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -414,10 +414,6 @@ export const QuoteRequests: React.FC = () => {
                                   )}
                                   <div className="cart-product-info">
                                     <span className="product-name">{item.nameEn}</span>
-                                    <span className="product-id">
-                                      <Hash size={10} />
-                                      {item.id}
-                                    </span>
                                   </div>
                                 </div>
                                 <span className="cart-category">{item.category || '—'}</span>

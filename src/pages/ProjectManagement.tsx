@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Plus, Edit2, Trash2, ArrowLeft, X, Loader2, Beaker, Zap, Building, Droplets,
-  Factory, Cog, Wrench, Shield, ShieldCheck, Flame, Hammer, Truck, Package, Plug, Lightbulb, Activity, Layers, Box, MapPin
+  Factory, Cog, Wrench, Shield, ShieldCheck, Flame, Hammer, Truck, Package, Plug, Lightbulb, Activity, Layers, Box, MapPin,
+  ChevronLeft, ChevronRight, ChevronDown, Search, Upload,
+  Landmark, Store, Train, Stethoscope, Server, Leaf, HardHat, Fuel
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -110,6 +112,7 @@ export interface Project {
   iconType: string;
   iconTypeAr?: string;
   customIconName?: string;
+  categoryIconUrl?: string;
   country?: string;
   
   titleEn: string;
@@ -131,10 +134,113 @@ const emptyProject: Partial<Project> = {
   iconType: '',
   iconTypeAr: '',
   customIconName: '',
+  categoryIconUrl: '',
   country: '',
   titleEn: '', summaryEn: '', locationEn: '',
   titleAr: '', summaryAr: '', locationAr: ''
 };
+
+/* ── Icon Registry ──────────────────────────────────────────── */
+const AVAILABLE_CUSTOM_ICONS: { name: string; group: string }[] = [
+  { name: 'Factory',     group: 'Industrial' },
+  { name: 'HardHat',     group: 'Industrial' },
+  { name: 'Hammer',      group: 'Industrial' },
+  { name: 'Wrench',      group: 'Industrial' },
+  { name: 'Cog',         group: 'Industrial' },
+  { name: 'Zap',         group: 'Energy' },
+  { name: 'Fuel',        group: 'Energy' },
+  { name: 'Flame',       group: 'Energy' },
+  { name: 'Leaf',        group: 'Energy' },
+  { name: 'Plug',        group: 'Energy' },
+  { name: 'Lightbulb',   group: 'Energy' },
+  { name: 'Landmark',    group: 'Infrastructure' },
+  { name: 'Building',    group: 'Infrastructure' },
+  { name: 'Store',       group: 'Infrastructure' },
+  { name: 'Layers',      group: 'Infrastructure' },
+  { name: 'Shield',      group: 'Defense' },
+  { name: 'ShieldCheck', group: 'Defense' },
+  { name: 'Droplets',    group: 'Water' },
+  { name: 'Truck',       group: 'Transport' },
+  { name: 'Train',       group: 'Transport' },
+  { name: 'Server',      group: 'Tech & Health' },
+  { name: 'Stethoscope', group: 'Tech & Health' },
+  { name: 'Beaker',      group: 'Tech & Health' },
+  { name: 'Activity',    group: 'Tech & Health' },
+  { name: 'Package',     group: 'General' },
+  { name: 'Box',         group: 'General' },
+];
+
+function renderIconByName(name: string, size = 20): React.ReactNode {
+  switch (name) {
+    case 'Factory':     return <Factory size={size} />;
+    case 'HardHat':     return <HardHat size={size} />;
+    case 'Hammer':      return <Hammer size={size} />;
+    case 'Wrench':      return <Wrench size={size} />;
+    case 'Cog':         return <Cog size={size} />;
+    case 'Zap':         return <Zap size={size} />;
+    case 'Fuel':        return <Fuel size={size} />;
+    case 'Flame':       return <Flame size={size} />;
+    case 'Leaf':        return <Leaf size={size} />;
+    case 'Plug':        return <Plug size={size} />;
+    case 'Lightbulb':   return <Lightbulb size={size} />;
+    case 'Landmark':    return <Landmark size={size} />;
+    case 'Building':    return <Building size={size} />;
+    case 'Store':       return <Store size={size} />;
+    case 'Layers':      return <Layers size={size} />;
+    case 'Shield':      return <Shield size={size} />;
+    case 'ShieldCheck': return <ShieldCheck size={size} />;
+    case 'Droplets':    return <Droplets size={size} />;
+    case 'Truck':       return <Truck size={size} />;
+    case 'Train':       return <Train size={size} />;
+    case 'Server':      return <Server size={size} />;
+    case 'Stethoscope': return <Stethoscope size={size} />;
+    case 'Beaker':      return <Beaker size={size} />;
+    case 'Activity':    return <Activity size={size} />;
+    case 'Package':     return <Package size={size} />;
+    case 'Box':         return <Box size={size} />;
+    default:            return <Building size={size} />;
+  }
+}
+
+const ICON_GROUPS = Array.from(new Set(AVAILABLE_CUSTOM_ICONS.map(i => i.group)));
+
+const IconPickerGrid: React.FC<{ value: string; onChange: (name: string) => void }> = ({ value, onChange }) => (
+  <div className="icon-picker-wrap">
+    {ICON_GROUPS.map(group => (
+      <div key={group} className="icon-picker-group">
+        <span className="icon-picker-group-label">{group}</span>
+        <div className="icon-picker-row">
+          {AVAILABLE_CUSTOM_ICONS.filter(i => i.group === group).map(({ name }) => (
+            <button
+              key={name}
+              type="button"
+              title={name}
+              className={`icon-picker-btn${value === name ? ' selected' : ''}`}
+              onClick={() => onChange(name)}
+            >
+              {renderIconByName(name, 20)}
+              <span className="icon-picker-label">{name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const IconGuidelinesBox: React.FC = () => (
+  <div className="icon-guidelines">
+    <p className="icon-guidelines-title">Icon guidelines</p>
+    <ul className="icon-guidelines-list">
+      <li>Use <strong>SVG format</strong> whenever possible — stays sharp at any size</li>
+      <li>Keep icons <strong>simple and minimal</strong> — no text, labels, or complex logos</li>
+      <li><strong>Transparent background</strong></li>
+      <li><strong>Square aspect ratio (1:1)</strong> — recommended 512 × 512 px or higher</li>
+      <li>Use a <strong>consistent style</strong> across all categories (outline or solid, not mixed)</li>
+      <li>Ensure <strong>sufficient contrast</strong> so the icon remains visible on all backgrounds</li>
+    </ul>
+  </div>
+);
 
 /* ── CategoryPicker ──────────────────────────────────────────── */
 interface CategoryPickerProps {
@@ -270,11 +376,15 @@ const CategoryPicker: React.FC<CategoryPickerProps> = ({ value, options, getCate
   );
 };
 
+const PAGE_SIZE = 10; // 5 rows × 2 columns
+
 export const ProjectManagement: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   
   const [viewMode, setViewMode] = useState<'LIST' | 'EDIT'>('LIST');
 
@@ -291,9 +401,11 @@ export const ProjectManagement: React.FC = () => {
   const [currentLang, setCurrentLang] = useState<'EN' | 'AR'>('EN');
   const [formData, setFormData] = useState<Partial<Project>>(emptyProject);
   const [addingNewCat, setAddingNewCat] = useState(false);
-  const [editCatData, setEditCatData] = useState<{oldNameEn: string, oldNameAr: string, oldIconName: string, nameEn: string, nameAr: string, iconName: string} | null>(null);
+  const [editCatData, setEditCatData] = useState<{oldNameEn: string, oldNameAr: string, oldIconName: string, oldIconUrl: string, nameEn: string, nameAr: string, iconName: string, iconUrl: string} | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [showBuiltinPicker, setShowBuiltinPicker] = useState(false);
 
   const [alertConfig, setAlertConfig] = useState<{
     isOpen: boolean;
@@ -394,6 +506,27 @@ export const ProjectManagement: React.FC = () => {
     }
   };
 
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>, onSuccess: (url: string) => void) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setIsUploadingIcon(true);
+    try {
+      const storageRef = ref(storage, `category_icons/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on('state_changed', null,
+        (err) => { console.error('Icon upload failed:', err); setIsUploadingIcon(false); showAlert('Upload Failed', 'Icon image upload failed.', 'danger'); },
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          onSuccess(url);
+          setIsUploadingIcon(false);
+        }
+      );
+    } catch (err) {
+      setIsUploadingIcon(false);
+      showAlert('Error', 'An error occurred starting the icon upload.', 'danger');
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -403,6 +536,10 @@ export const ProjectManagement: React.FC = () => {
     }
     if (!formData.titleAr?.trim() || !formData.summaryAr?.trim() || !formData.locationAr?.trim() || !formData.clientNameAr?.trim()) {
       showAlert("Missing Arabic Content", "Arabic layout is compulsory. Please switch to the Arabic layout tab and fill out the fields.", "warning");
+      return;
+    }
+    if (!formData.iconType?.trim()) {
+      showAlert("Missing Category", "Please select or create a project category.", "warning");
       return;
     }
     if (!formData.imageUrl) {
@@ -424,7 +561,8 @@ export const ProjectManagement: React.FC = () => {
         await setDoc(doc(db, 'project_categories', catId), {
           nameEn: formData.iconType,
           nameAr: formData.iconTypeAr || getCategoryLabel(formData.iconType, 'AR'),
-          iconName: formData.customIconName || ''
+          iconName: formData.customIconName || '',
+          iconUrl: formData.categoryIconUrl || ''
         }, { merge: true }).catch(e => {
           console.error("Could not update project_categories due to permissions", e);
         });
@@ -473,7 +611,7 @@ export const ProjectManagement: React.FC = () => {
         try {
           const projsToUpdate = projects.filter(p => p.iconType === catToDelete);
           const updatePromises = projsToUpdate.map(p => 
-            setDoc(doc(db, 'projects', p.id), { iconType: '', iconTypeAr: '', customIconName: '' }, { merge: true })
+            setDoc(doc(db, 'projects', p.id), { iconType: '', iconTypeAr: '', customIconName: '', categoryIconUrl: '' }, { merge: true })
           );
           await Promise.all(updatePromises);
 
@@ -497,14 +635,17 @@ export const ProjectManagement: React.FC = () => {
     const initialEn = getCategoryLabel(catName, 'EN');
     const initialAr = proj?.iconTypeAr || getCategoryLabel(catName, 'AR');
     const initialIcon = proj?.customIconName || '';
-    
+    const initialIconUrl = proj?.categoryIconUrl || '';
+
     setEditCatData({
       oldNameEn: catName,
       oldNameAr: initialAr,
       oldIconName: initialIcon,
+      oldIconUrl: initialIconUrl,
       nameEn: initialEn,
       nameAr: initialAr,
-      iconName: initialIcon
+      iconName: initialIcon,
+      iconUrl: initialIconUrl,
     });
   };
 
@@ -518,11 +659,12 @@ export const ProjectManagement: React.FC = () => {
     try {
       const projsToUpdate = projects.filter(p => p.iconType === editCatData.oldNameEn);
       
-      const updatePromises = projsToUpdate.map(p => 
-        setDoc(doc(db, 'projects', p.id), { 
-          iconType: editCatData.nameEn, 
-          iconTypeAr: editCatData.nameAr || editCatData.nameEn, 
-          customIconName: editCatData.iconName 
+      const updatePromises = projsToUpdate.map(p =>
+        setDoc(doc(db, 'projects', p.id), {
+          iconType: editCatData.nameEn,
+          iconTypeAr: editCatData.nameAr || editCatData.nameEn,
+          customIconName: editCatData.iconName,
+          categoryIconUrl: editCatData.iconUrl,
         }, { merge: true })
       );
       await Promise.all(updatePromises);
@@ -530,26 +672,28 @@ export const ProjectManagement: React.FC = () => {
       // Update project_categories
       const oldCatId = editCatData.oldNameEn.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
       const newCatId = editCatData.nameEn.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
-      
+
       if (oldCatId !== newCatId) {
-         await deleteDoc(doc(db, 'project_categories', oldCatId)).catch(e => console.error(e));
+        await deleteDoc(doc(db, 'project_categories', oldCatId)).catch(e => console.error(e));
       }
 
       await setDoc(doc(db, 'project_categories', newCatId), {
         nameEn: editCatData.nameEn,
         nameAr: editCatData.nameAr || editCatData.nameEn,
-        iconName: editCatData.iconName
+        iconName: editCatData.iconName,
+        iconUrl: editCatData.iconUrl,
       }, { merge: true }).catch(e => {
         console.error("Could not update project_categories due to permissions", e);
       });
 
       if (formData.iconType === editCatData.oldNameEn) {
-         setFormData(prev => ({ 
-           ...prev, 
-           iconType: editCatData.nameEn, 
-           iconTypeAr: editCatData.nameAr || editCatData.nameEn, 
-           customIconName: editCatData.iconName 
-         }));
+        setFormData(prev => ({
+          ...prev,
+          iconType: editCatData.nameEn,
+          iconTypeAr: editCatData.nameAr || editCatData.nameEn,
+          customIconName: editCatData.iconName,
+          categoryIconUrl: editCatData.iconUrl,
+        }));
       }
 
       setEditCatData(null);
@@ -561,53 +705,39 @@ export const ProjectManagement: React.FC = () => {
     setIsSaving(false);
   };
 
-  const renderIcon = (type: string, customIconName?: string) => {
-    if (customIconName) {
-      switch (customIconName) {
-        case 'Factory': return <Factory size={24} />;
-        case 'Cog': return <Cog size={24} />;
-        case 'Wrench': return <Wrench size={24} />;
-        case 'Hammer': return <Hammer size={24} />;
-        case 'Zap': return <Zap size={24} />;
-        case 'Plug': return <Plug size={24} />;
-        case 'Lightbulb': return <Lightbulb size={24} />;
-        case 'Shield': return <Shield size={24} />;
-        case 'ShieldCheck': return <ShieldCheck size={24} />;
-        case 'Activity': return <Activity size={24} />;
-        case 'Beaker': return <Beaker size={24} />;
-        case 'Droplets': return <Droplets size={24} />;
-        case 'Flame': return <Flame size={24} />;
-        case 'Truck': return <Truck size={24} />;
-        case 'Package': return <Package size={24} />;
-        case 'Box': return <Box size={24} />;
-        case 'Layers': return <Layers size={24} />;
-        case 'Building': return <Building size={24} />;
-      }
-    }
+  const renderIcon = (type: string, customIconName?: string, categoryIconUrl?: string) => {
+    if (categoryIconUrl) return <img src={categoryIconUrl} alt={type} className="category-icon-img" />;
+    if (customIconName) return renderIconByName(customIconName, 24);
 
     switch (type) {
+      case 'Industrial':                  return <Factory size={24} />;
+      case 'Infrastructure & Government': return <Landmark size={24} />;
+      case 'Commercial Developments':     return <Store size={24} />;
+      case 'Defense & Institutional':     return <ShieldCheck size={24} />;
+      case 'Water & Utilities':           return <Droplets size={24} />;
+      case 'Oil & Gas':                   return <Fuel size={24} />;
+      case 'Energy & Power':              return <Zap size={24} />;
+      case 'Transportation & Rail':       return <Train size={24} />;
+      case 'Healthcare & Laboratories':   return <Stethoscope size={24} />;
+      case 'Data Centers & Technology':   return <Server size={24} />;
+      case 'Renewable Energy':            return <Leaf size={24} />;
+      case 'Construction / EPC Support':  return <HardHat size={24} />;
+      // Legacy names
       case 'Chemical':
-      case 'Chemical / Processing': return <Beaker size={24} />;
+      case 'Chemical / Processing':       return <Beaker size={24} />;
       case 'Energy':
-      case 'Energy / Power': return <Zap size={24} />;
+      case 'Energy / Power':              return <Zap size={24} />;
       case 'Construction':
-      case 'Construction / Heavy': return <Building size={24} />;
+      case 'Construction / Heavy':        return <Building size={24} />;
       case 'Pipeline':
-      case 'Pipeline / Water': return <Droplets size={24} />;
-      default: 
+      case 'Pipeline / Water':            return <Droplets size={24} />;
+      default: {
         const ref = projects.find(p => p.iconType === type && p.customIconName);
         if (ref && ref.customIconName) return renderIcon(type, ref.customIconName);
         return <Building size={24} />;
+      }
     }
   };
-
-  const AVAILABLE_CUSTOM_ICONS = [
-    'Factory', 'Cog', 'Wrench', 'Hammer',
-    'Zap', 'Plug', 'Lightbulb',
-    'Shield', 'ShieldCheck', 'Activity',
-    'Beaker', 'Droplets', 'Flame',
-    'Truck', 'Package', 'Box', 'Layers', 'Building'
-  ];
 
   const allKnownCats = Array.from(new Set(
     projects.map(p => p.iconType).filter(t => t && t.trim() !== '' && t !== 'Uncategorized')
@@ -744,23 +874,58 @@ export const ProjectManagement: React.FC = () => {
                                 style={{ flex: 1, direction: 'rtl' }}
                              />
                            </div>
-                           <select 
-                              value={editCatData.iconName} 
-                              onChange={e => setEditCatData(prev => prev ? {...prev, iconName: e.target.value} : null)}
-                              style={{ width: '100%' }}
-                           >
-                             <option value="">Select Icon Symbol</option>
-                             {AVAILABLE_CUSTOM_ICONS.map(icon => (
-                                <option key={icon} value={icon}>{icon} Icon</option>
-                             ))}
-                           </select>
+                           <div>
+                             <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'block' }}>Category Icon</label>
+                             {isUploadingIcon ? (
+                               <div className="icon-uploading">
+                                 <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} color="var(--accent-teal)" />
+                                 <span>Uploading icon...</span>
+                               </div>
+                             ) : editCatData.iconUrl ? (
+                               <div className="icon-upload-preview">
+                                 <img src={editCatData.iconUrl} alt="icon" />
+                                 <div>
+                                   <p className="icon-preview-note">This icon will show on all projects in this category and on the main website.</p>
+                                   <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+                                     onClick={() => setEditCatData(prev => prev ? { ...prev, iconUrl: '' } : null)}>
+                                     Replace Icon
+                                   </button>
+                                 </div>
+                               </div>
+                             ) : (
+                               <>
+                                 <button type="button" className="builtin-toggle" onClick={() => setShowBuiltinPicker(p => !p)}>
+                                   {editCatData.iconName ? (
+                                     <span className="builtin-current">
+                                       {renderIconByName(editCatData.iconName, 14)}
+                                       {editCatData.iconName}
+                                     </span>
+                                   ) : 'Choose a built-in icon'}
+                                   <ChevronDown size={13} className={showBuiltinPicker ? 'builtin-chevron-open' : 'builtin-chevron'} />
+                                 </button>
+                                 {showBuiltinPicker && (
+                                   <IconPickerGrid
+                                     value={editCatData.iconName}
+                                     onChange={name => setEditCatData(prev => prev ? { ...prev, iconName: name === prev.iconName ? '' : name } : null)}
+                                   />
+                                 )}
+                                 <label className="icon-upload-btn" style={{ marginTop: '0.4rem' }}>
+                                   <Upload size={15} />
+                                   Or upload a custom icon (PNG, SVG, WebP)
+                                   <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" style={{ display: 'none' }}
+                                     onChange={e => handleIconUpload(e, url => setEditCatData(prev => prev ? { ...prev, iconUrl: url } : null))} />
+                                 </label>
+                                 <IconGuidelinesBox />
+                               </>
+                             )}
+                           </div>
                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                               <button 
                                 type="button" 
                                 className="btn btn-primary" 
                                 onClick={saveCategoryEdit} 
                                 style={{ flex: 1, padding: '0.4rem', fontSize: '0.85rem' }} 
-                                disabled={isSaving || (editCatData.nameEn === editCatData.oldNameEn && editCatData.nameAr === editCatData.oldNameAr && editCatData.iconName === editCatData.oldIconName)}
+                                disabled={isSaving || (editCatData.nameEn === editCatData.oldNameEn && editCatData.nameAr === editCatData.oldNameAr && editCatData.iconName === editCatData.oldIconName && editCatData.iconUrl === editCatData.oldIconUrl)}
                               >
                                 {isSaving ? 'Saving...' : 'Save Changes'}
                               </button>
@@ -775,7 +940,7 @@ export const ProjectManagement: React.FC = () => {
                               value={addingNewCat ? 'Custom' : (formData.iconType || '')}
                               options={allKnownCats}
                               getCategoryLabel={getCategoryLabel}
-                              renderIcon={(cat: string) => renderIcon(cat, projects.find(p => p.iconType === cat)?.customIconName)}
+                              renderIcon={(cat: string) => { const p = projects.find(pr => pr.iconType === cat); return renderIcon(cat, p?.customIconName, p?.categoryIconUrl); }}
                               onChange={(val) => {
                                 if (val === 'Custom') {
                                   setAddingNewCat(true);
@@ -819,17 +984,51 @@ export const ProjectManagement: React.FC = () => {
                                   style={{ flex: 1, direction: 'rtl' }}
                                 />
                               </div>
-                              <select 
-                                name="customIconName" 
-                                value={formData.customIconName || ''} 
-                                onChange={handleChange}
-                                style={{ width: '100%' }}
-                              >
-                                <option value="">Select Icon Symbol</option>
-                                {AVAILABLE_CUSTOM_ICONS.map(icon => (
-                                  <option key={icon} value={icon}>{icon} Icon</option>
-                                ))}
-                              </select>
+                              <div>
+                                <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', display: 'block' }}>Category Icon</label>
+                                {isUploadingIcon ? (
+                                  <div className="icon-uploading">
+                                    <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} color="var(--accent-teal)" />
+                                    <span>Uploading icon...</span>
+                                  </div>
+                                ) : formData.categoryIconUrl ? (
+                                  <div className="icon-upload-preview">
+                                    <img src={formData.categoryIconUrl} alt="icon" />
+                                    <div>
+                                      <p className="icon-preview-note">This icon will show on all projects in this category and on the main website.</p>
+                                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+                                        onClick={() => setFormData(prev => ({ ...prev, categoryIconUrl: '' }))}>
+                                        Replace Icon
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button type="button" className="builtin-toggle" onClick={() => setShowBuiltinPicker(p => !p)}>
+                                      {formData.customIconName ? (
+                                        <span className="builtin-current">
+                                          {renderIconByName(formData.customIconName, 14)}
+                                          {formData.customIconName}
+                                        </span>
+                                      ) : 'Choose a built-in icon'}
+                                      <ChevronDown size={13} className={showBuiltinPicker ? 'builtin-chevron-open' : 'builtin-chevron'} />
+                                    </button>
+                                    {showBuiltinPicker && (
+                                      <IconPickerGrid
+                                        value={formData.customIconName || ''}
+                                        onChange={name => setFormData(prev => ({ ...prev, customIconName: name === prev.customIconName ? '' : name }))}
+                                      />
+                                    )}
+                                    <label className="icon-upload-btn" style={{ marginTop: '0.4rem' }}>
+                                      <Upload size={15} />
+                                      Or upload a custom icon (PNG, SVG, WebP)
+                                      <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" style={{ display: 'none' }}
+                                        onChange={e => handleIconUpload(e, url => setFormData(prev => ({ ...prev, categoryIconUrl: url })))} />
+                                    </label>
+                                    <IconGuidelinesBox />
+                                  </>
+                                )}
+                              </div>
                             </div>
                           )}
                         </>
@@ -947,68 +1146,134 @@ export const ProjectManagement: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
+            <div className="panel project-search-bar">
+              <div className="blog-search-wrap">
+                <Search size={15} className="blog-search-icon" />
+                <input
+                  type="text"
+                  className="blog-search-input"
+                  placeholder="Search projects..."
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                />
+                {searchQuery && (
+                  <button className="blog-search-clear" onClick={() => { setSearchQuery(''); setCurrentPage(1); }}>
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {loading ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Loading projects...</div>
-            ) : projects.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>No projects found. Add one above!</div>
-            ) : (
-              <div className="project-grid">
-                {projects.map(proj => (
-                  <div key={proj.id} className="project-card" onClick={() => handleOpenEditor(proj)}>
-                    <div className="card-admin-overlay">
-                      <button className="admin-btn edit" onClick={(e) => { e.stopPropagation(); handleOpenEditor(proj); }} title="Edit Project">
-                        <Edit2 size={16} />
-                      </button>
-                      <button className="admin-btn delete" onClick={(e) => { e.stopPropagation(); handleDelete(proj.id, proj.titleEn); }} title="Delete Project">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+            ) : (() => {
+              const q = searchQuery.trim().toLowerCase();
+              const filtered = q
+                ? projects.filter(p =>
+                    p.titleEn?.toLowerCase().includes(q) ||
+                    p.titleAr?.toLowerCase().includes(q) ||
+                    p.clientName?.toLowerCase().includes(q) ||
+                    p.clientNameAr?.toLowerCase().includes(q) ||
+                    p.locationEn?.toLowerCase().includes(q) ||
+                    p.country?.toLowerCase().includes(q) ||
+                    p.iconType?.toLowerCase().includes(q)
+                  )
+                : projects;
 
-                    <div className="project-img-wrapper">
-                      {proj.imageUrl && <img src={proj.imageUrl} alt={proj.titleEn} />}
-                      <div className="project-img-overlay">
-                        <div className="project-icon-box">
-                          {renderIcon(proj.iconType, proj.customIconName)}
-                        </div>
-                        <div className="project-img-titles">
-                          <span className="project-client-name">{proj.clientName}</span>
-                          <h3 className="project-card-title">{proj.titleEn}</h3>
-                        </div>
-                      </div>
-                    </div>
+              if (filtered.length === 0) return (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                  {q ? `No projects found for "${searchQuery}".` : 'No projects found. Add one above!'}
+                </div>
+              );
 
-                    <div className="project-card-body">
-                      <p className="project-summary">{proj.summaryEn}</p>
-                      <div className="project-card-footer">
-                        <div className="project-meta-col">
-                          <span className="project-meta-label">Project Value</span>
-                          <span className="project-meta-value">{proj.projectValue}</span>
+              const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+              const pagedProjects = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+              return (
+                <>
+                  <div className="project-grid">
+                    {pagedProjects.map(proj => (
+                      <div key={proj.id} className="project-card" onClick={() => handleOpenEditor(proj)}>
+                        <div className="card-admin-overlay">
+                          <button className="admin-btn edit" onClick={(e) => { e.stopPropagation(); handleOpenEditor(proj); }} title="Edit Project">
+                            <Edit2 size={16} />
+                          </button>
+                          <button className="admin-btn delete" onClick={(e) => { e.stopPropagation(); handleDelete(proj.id, proj.titleEn); }} title="Delete Project">
+                            <Trash2 size={16} />
+                          </button>
                         </div>
-                        <div className="project-meta-col" style={{ textAlign: 'left', flex: 1 }}>
-                          <span className="project-meta-label">Location</span>
-                          <div className="project-meta-value-group">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                              <MapPin size={14} color="#27818A" style={{ flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.95rem' }}>{proj.locationEn}</span>
+
+                        <div className="project-img-wrapper">
+                          {proj.imageUrl && <img src={proj.imageUrl} alt={proj.titleEn} />}
+                          <div className="project-img-overlay">
+                            <div className="project-icon-box">
+                              {renderIcon(proj.iconType, proj.customIconName, proj.categoryIconUrl)}
                             </div>
-                            {proj.country && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '2px' }}>
-                                <ReactCountryFlag
-                                  countryCode={getCountryCode(proj.country) || ''}
-                                  svg
-                                  style={{ width: '1.2em', height: '0.9em', borderRadius: '1px', flexShrink: 0 }}
-                                />
-                                <span style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 500 }}>{proj.country}</span>
+                            <div className="project-img-titles">
+                              <span className="project-client-name">{proj.clientName}</span>
+                              <h3 className="project-card-title">{proj.titleEn}</h3>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="project-card-body">
+                          <p className="project-summary">{proj.summaryEn}</p>
+                          <div className="project-card-footer">
+                            <div className="project-meta-col">
+                              <span className="project-meta-label">Project Value</span>
+                              <span className="project-meta-value">{proj.projectValue}</span>
+                            </div>
+                            <div className="project-meta-col" style={{ textAlign: 'left', flex: 1 }}>
+                              <span className="project-meta-label">Location</span>
+                              <div className="project-meta-value-group">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.2rem' }}>
+                                  <MapPin size={14} color="#27818A" style={{ flexShrink: 0 }} />
+                                  <span style={{ fontSize: '0.95rem' }}>{proj.locationEn}</span>
+                                </div>
+                                {proj.country && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '2px' }}>
+                                    <ReactCountryFlag
+                                      countryCode={getCountryCode(proj.country) || ''}
+                                      svg
+                                      style={{ width: '1.2em', height: '0.9em', borderRadius: '1px', flexShrink: 0 }}
+                                    />
+                                    <span style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 500 }}>{proj.country}</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {totalPages > 1 && (
+                    <div className="project-pagination">
+                      <button
+                        className="btn btn-secondary pagination-btn"
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft size={16} />
+                        Previous
+                      </button>
+                      <span className="pagination-info">
+                        Page {currentPage} of {totalPages}
+                        <span className="pagination-count"> &mdash; {filtered.length} projects</span>
+                      </span>
+                      <button
+                        className="btn btn-secondary pagination-btn"
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </motion.div>
         )}
       </AnimatePresence>

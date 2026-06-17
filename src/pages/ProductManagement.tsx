@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, X, Loader2, UploadCloud, Pencil, Trash2, ImageOff, Filter,
-  FolderTree, Plus, Check, Folder, FolderOpen
+  FolderTree, Plus, Check, Folder, FolderOpen, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -226,6 +226,7 @@ export interface Product {
 }
 
 const EMPTY_FORM = { slug: '', categoryId: '', subcategoryId: '', nameEn: '', nameAr: '', descriptionEn: '', descriptionAr: '', imageUrl: '', keywords: '' };
+const PAGE_SIZE = 14;
 
 /* ─── Component ──────────────────────────────────────────────────── */
 export const ProductManagement: React.FC = () => {
@@ -238,6 +239,8 @@ export const ProductManagement: React.FC = () => {
   // Filter state
   const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>('all');
   const [selectedFilterSubcat, setSelectedFilterSubcat] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -301,8 +304,18 @@ export const ProductManagement: React.FC = () => {
     if (selectedFilterSubcat !== 'all') {
       result = result.filter(p => p.subcategoryId === selectedFilterSubcat);
     }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter(p =>
+        p.nameEn.toLowerCase().includes(q) ||
+        p.nameAr.toLowerCase().includes(q) ||
+        (p.descriptionEn || '').toLowerCase().includes(q)
+      );
+    }
     return result;
-  }, [products, selectedFilterCategory, selectedFilterSubcat]);
+  }, [products, selectedFilterCategory, selectedFilterSubcat, searchQuery]);
+
+  useEffect(() => { setCurrentPage(1); }, [selectedFilterCategory, selectedFilterSubcat, searchQuery]);
 
   /** Subcategory list for the currently selected FILTER category */
   const filterSubcats = useMemo(() => {
@@ -557,65 +570,112 @@ export const ProductManagement: React.FC = () => {
                 </select>
               </>
             )}
-          </div>
 
-          <div className="products-grid">
-            {/* Add card */}
-            <div className="product-add-card" onClick={openAdd}>
-              <UploadCloud size={40} />
-              <div className="product-add-card-text">
-                <div>Add New Product</div>
-                <div>Add images, titles, and descriptions</div>
-              </div>
+            <div className="prod-search-wrap">
+              <Search size={15} className="prod-search-icon" />
+              <input
+                className="prod-search-input"
+                placeholder="Search products\u2026"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button className="prod-search-clear" onClick={() => setSearchQuery('')}>
+                  <X size={13} />
+                </button>
+              )}
             </div>
-
-            {/* Existing products */}
-            <AnimatePresence>
-              {filteredProducts.map((prod) => (
-                <motion.div
-                  key={prod.id}
-                  className="product-card"
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {/* Image */}
-                  {prod.imageUrl ? (
-                    <img src={prod.imageUrl} alt={prod.nameEn} className="product-card-image" />
-                  ) : (
-                    <div className="product-card-image-placeholder">
-                      <ImageOff size={36} />
-                    </div>
-                  )}
-
-                  {/* Info */}
-                  <div className="product-card-body">
-                    <div className="product-card-category">
-                      {getCategoryName(prod.categoryId)}
-                      {getSubcatName(prod) && (
-                        <span className="product-card-subcat"> › {getSubcatName(prod)}</span>
-                      )}
-                    </div>
-                    <div className="product-card-title-en">{prod.nameEn}</div>
-                    <div className="product-card-desc-en">{prod.descriptionEn}</div>
-                    <div className="product-card-title-ar">{prod.nameAr}</div>
-                    <div className="product-card-desc-ar">{prod.descriptionAr}</div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="product-card-actions">
-                    <button className="cat-btn-edit" onClick={() => openEdit(prod)}>
-                      <Pencil size={14} /> Edit
-                    </button>
-                    <button className="cat-btn-delete" onClick={() => handleDelete(prod)}>
-                      <Trash2 size={14} /> Delete
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
           </div>
+
+          {(() => {
+            const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
+            const pagedProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+            return (
+              <>
+                <div className="products-grid">
+                  {/* Add card — always visible */}
+                  <div className="product-add-card" onClick={openAdd}>
+                    <UploadCloud size={40} />
+                    <div className="product-add-card-text">
+                      <div>Add New Product</div>
+                      <div>Add images, titles, and descriptions</div>
+                    </div>
+                  </div>
+
+                  {/* Paginated products */}
+                  <AnimatePresence>
+                    {pagedProducts.length === 0 ? null : pagedProducts.map((prod) => (
+                      <motion.div
+                        key={prod.id}
+                        className="product-card"
+                        initial={{ opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {prod.imageUrl ? (
+                          <img src={prod.imageUrl} alt={prod.nameEn} className="product-card-image" />
+                        ) : (
+                          <div className="product-card-image-placeholder">
+                            <ImageOff size={36} />
+                          </div>
+                        )}
+                        <div className="product-card-body">
+                          <div className="product-card-category">
+                            {getCategoryName(prod.categoryId)}
+                            {getSubcatName(prod) && (
+                              <span className="product-card-subcat"> › {getSubcatName(prod)}</span>
+                            )}
+                          </div>
+                          <div className="product-card-title-en">{prod.nameEn}</div>
+                          <div className="product-card-desc-en">{prod.descriptionEn}</div>
+                          <div className="product-card-title-ar">{prod.nameAr}</div>
+                          <div className="product-card-desc-ar">{prod.descriptionAr}</div>
+                        </div>
+                        <div className="product-card-actions">
+                          <button className="cat-btn-edit" onClick={() => openEdit(prod)}>
+                            <Pencil size={14} /> Edit
+                          </button>
+                          <button className="cat-btn-delete" onClick={() => handleDelete(prod)}>
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {filteredProducts.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                    No products found{searchQuery ? ` for "${searchQuery}"` : ''}.
+                  </div>
+                )}
+
+                {totalPages > 1 && (
+                  <div className="prod-pagination">
+                    <button
+                      className="btn pagination-btn"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft size={16} /> Previous
+                    </button>
+                    <span className="pagination-info">
+                      Page {currentPage} of {totalPages}
+                      <span className="pagination-count"> ({filteredProducts.length} products)</span>
+                    </span>
+                    <button
+                      className="btn pagination-btn"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </>
       )}
 
