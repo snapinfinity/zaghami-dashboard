@@ -4,11 +4,12 @@ import {
   ShoppingCart, Calendar, User, ChevronDown, ChevronUp,
   Building, Phone, Mail, ArrowLeft, CheckCircle, Clock,
   Loader2, Package, Trash2, FileText, Globe, Briefcase,
-  RotateCcw
+  RotateCcw, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import * as XLSX from 'xlsx';
 import './QuoteRequests.css';
 import { AlertModal, type AlertType } from '../components/AlertModal';
 
@@ -20,10 +21,13 @@ interface QuoteItem {
   nameEn: string;
   nameAr?: string;
   category?: string;
+  categoryEn?: string;
+  categoryAr?: string;
   image?: string;
   quantity: number;
   price?: number;
   descriptionEn?: string;
+  remark?: string;
 }
 
 interface CustomerInfo {
@@ -148,11 +152,14 @@ export const QuoteRequests: React.FC = () => {
             id:           it.id         || it.productId   || '',
             nameEn:       it.nameEn     || it.productName || it.name || 'Unknown Product',
             nameAr:       it.nameAr     || '',
-            category:     it.category   || '',
+            category:     it.categoryEn || it.category || it.categoryAr || '',
+            categoryEn:   it.categoryEn || '',
+            categoryAr:   it.categoryAr || '',
             image:        it.image      || '',
             quantity:     Number(it.quantity) || 1,
             price:        Number(it.price)    || 0,
             descriptionEn:it.descriptionEn   || '',
+            remark:       it.remark     || '',
           }));
 
           const totalItems = quoteItems.reduce((s, i) => s + i.quantity, 0);
@@ -221,6 +228,54 @@ export const QuoteRequests: React.FC = () => {
         }
       }
     });
+  };
+
+  const exportToExcel = (quote: QuoteRequest) => {
+    const customerRows = [
+      ['CUSTOMER INFORMATION', ''],
+      ['Name',               quote.customer.fullName],
+      ['Email',              quote.customer.email],
+      ['Phone',              quote.customer.phoneNumber  || '—'],
+      ['Company',            quote.customer.companyName  || '—'],
+      ['Job Title',          quote.customer.jobTitle     || '—'],
+      ['Country',            quote.customer.country      || '—'],
+      ['Quantity Info',      quote.customer.quantityInfo || '—'],
+      ['Unit of Measurement',quote.customer.unitOfMeasurement || '—'],
+      ['Status',             quote.status],
+      ['Date',               quote.displayDate],
+      [],
+      ['REQUESTED PRODUCTS', '', '', '', '', ''],
+      ['#', 'Product ID', 'Product Name', 'Category', 'Quantity', 'Remarks / Notes'],
+      ...quote.items.map((item, idx) => [
+        idx + 1,
+        item.id,
+        item.nameEn,
+        item.category || '—',
+        item.quantity,
+        item.remark?.trim() || '—',
+      ]),
+      [],
+      ['', '', '', 'TOTAL QTY', quote.totalItems, ''],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(customerRows);
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 6  },  // #
+      { wch: 26 },  // Product ID
+      { wch: 40 },  // Product Name
+      { wch: 22 },  // Category
+      { wch: 12 },  // Quantity
+      { wch: 50 },  // Remarks
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Quote Request');
+
+    const safeName = quote.customer.fullName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const date = quote.displayDate.split(',')[0].replace(/\s/g, '-');
+    XLSX.writeFile(wb, `quote_${safeName}_${date}.xlsx`);
   };
 
   const filtered = quotes.filter(q => filter === 'All' || q.status === filter);
@@ -323,12 +378,15 @@ export const QuoteRequests: React.FC = () => {
                           ` — ${quote.items.slice(0, 2).map(i => i.nameEn).join(', ')}${quote.items.length > 2 ? ` +${quote.items.length - 2} more` : ''}`
                         )}
                       </span>
+                      {quote.items.some(i => i.remark?.trim()) && (
+                        <span className="has-remarks-tag">remarks</span>
+                      )}
                     </div>
                   </div>
 
                   <div className="quote-meta-col">
                     <span className="quote-date">
-                      <Calendar size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                      <Calendar size={13} />
                       {quote.displayDate}
                     </span>
                     <button className="expand-btn">
@@ -384,7 +442,13 @@ export const QuoteRequests: React.FC = () => {
                         {quote.customer.quantityInfo && (
                           <div className="detail-item">
                             <Package size={15} className="icon-secondary" />
-                            <span>Qty info: {quote.customer.quantityInfo} {quote.customer.unitOfMeasurement}</span>
+                            <span>Additional Qty Info: {quote.customer.quantityInfo}</span>
+                          </div>
+                        )}
+                        {quote.customer.unitOfMeasurement && (
+                          <div className="detail-item">
+                            <Package size={15} className="icon-secondary" />
+                            <span>Unit of Measurement: {quote.customer.unitOfMeasurement}</span>
                           </div>
                         )}
                         <div className="detail-item">
@@ -405,25 +469,36 @@ export const QuoteRequests: React.FC = () => {
                               <span>Product</span>
                               <span className="cart-category">Category</span>
                               <span className="qty-col">Qty</span>
+                              <span className="remarks-col">Remarks</span>
                             </div>
                             {quote.items.map((item, idx) => (
-                              <div key={`${item.id}-${idx}`} className="cart-table-row">
-                                <div className="cart-product-name">
-                                  {item.image && (
-                                    <img src={item.image} alt={item.nameEn} className="cart-thumb" />
-                                  )}
-                                  <div className="cart-product-info">
-                                    <span className="product-name">{item.nameEn}</span>
+                              <React.Fragment key={`${item.id}-${idx}`}>
+                                <div className={`cart-table-row${item.remark?.trim() ? ' has-remark' : ''}`}>
+                                  <div className="cart-product-name">
+                                    {item.image && (
+                                      <img src={item.image} alt={item.nameEn} className="cart-thumb" />
+                                    )}
+                                    <div className="cart-product-info">
+                                      <span className="product-name">{item.nameEn}</span>
+                                    </div>
                                   </div>
+                                  <span className="cart-category">{item.category || '—'}</span>
+                                  <span className="cart-qty qty-col">{item.quantity}</span>
+                                  <span className="remarks-col remark-text">{item.remark?.trim() || <span className="no-remark">—</span>}</span>
                                 </div>
-                                <span className="cart-category">{item.category || '—'}</span>
-                                <span className="cart-qty qty-col">{item.quantity}</span>
-                              </div>
+                                {item.remark?.trim() && (
+                                  <div className="mobile-remark-row">
+                                    <span className="mobile-remark-label">Remark:</span>
+                                    <span className="mobile-remark-text">{item.remark}</span>
+                                  </div>
+                                )}
+                              </React.Fragment>
                             ))}
                             <div className="cart-table-footer">
                               <span>Total Quantity</span>
                               <span className="cart-category"></span>
                               <span className="qty-col total-qty">{quote.totalItems}</span>
+                              <span className="remarks-col"></span>
                             </div>
                           </div>
                         </div>
@@ -441,6 +516,15 @@ export const QuoteRequests: React.FC = () => {
                               Reply via Email
                             </a>
                           )}
+
+                          <button
+                            className="btn btn-excel"
+                            onClick={() => exportToExcel(quote)}
+                            title="Download product list as Excel"
+                          >
+                            <Download size={15} />
+                            Export Excel
+                          </button>
 
                           {quote.status !== 'Pending' && (
                             <button

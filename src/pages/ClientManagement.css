@@ -196,3 +196,54 @@
     max-width: 100%;
   }
 }
+
+/* ── Logo Guidelines ───────────────────────────────────────── */
+.logo-guidelines {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  background: rgba(44, 123, 132, 0.05);
+  border: 1px solid rgba(44, 123, 132, 0.2);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.logo-guidelines-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-teal);
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.logo-guidelines-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.logo-guidelines-list li {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  padding-left: 1rem;
+  position: relative;
+  line-height: 1.4;
+}
+
+.logo-guidelines-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0.25rem;
+  color: var(--accent-teal);
+  font-weight: 700;
+  font-size: 1.1rem;
+  top: -2px;
+}
+
+.logo-guidelines-list strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+

@@ -178,6 +178,18 @@ input:focus, textarea:focus, select:focus {
   border-color: var(--text-danger);
 }
 
+.btn-excel {
+  background-color: rgba(21, 128, 61, 0.1);
+  color: #15803d;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+.btn-excel:hover {
+  background-color: rgba(21, 128, 61, 0.18);
+  border-color: #15803d;
+  transform: translateY(-1px);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

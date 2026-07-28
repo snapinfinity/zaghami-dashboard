@@ -15,6 +15,18 @@ export interface Client {
   createdAt?: any;
 }
 
+const LogoGuidelinesBox: React.FC = () => (
+  <div className="logo-guidelines">
+    <p className="logo-guidelines-title">Logo Upload Guidelines</p>
+    <ul className="logo-guidelines-list">
+      <li>Please upload your logo in <strong>PNG or SVG format</strong> with a <strong>transparent background</strong></li>
+      <li>Use the <strong>full-colour or dark version</strong> of the logo — <strong>not a white version</strong></li>
+      <li>Recommended aspect ratio: <strong>rectangular (approx. 16:9 or 3:2)</strong></li>
+      <li>Ensure logo is <strong>trimmed tightly</strong> to the artwork edges (no unnecessary padding)</li>
+    </ul>
+  </div>
+);
+
 export const ClientManagement: React.FC = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
@@ -288,6 +300,7 @@ export const ClientManagement: React.FC = () => {
                       <input type="file" accept="image/*" onChange={handleImageUpload} />
                     )}
                   </div>
+                  <LogoGuidelinesBox />
                 </div>
 
                 <div style={{ marginBottom: '2rem' }}>
