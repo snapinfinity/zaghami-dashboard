@@ -244,18 +244,17 @@ export const QuoteRequests: React.FC = () => {
       ['Status',             quote.status],
       ['Date',               quote.displayDate],
       [],
-      ['REQUESTED PRODUCTS', '', '', '', '', ''],
-      ['#', 'Product ID', 'Product Name', 'Category', 'Quantity', 'Remarks / Notes'],
+      ['REQUESTED PRODUCTS', '', '', '', ''],
+      ['#', 'Product Name', 'Category', 'Quantity', 'Remarks / Notes'],
       ...quote.items.map((item, idx) => [
         idx + 1,
-        item.id,
         item.nameEn,
         item.category || '—',
         item.quantity,
         item.remark?.trim() || '—',
       ]),
       [],
-      ['', '', '', 'TOTAL QTY', quote.totalItems, ''],
+      ['', '', 'TOTAL QTY', quote.totalItems, ''],
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(customerRows);
@@ -263,7 +262,6 @@ export const QuoteRequests: React.FC = () => {
     // Column widths
     ws['!cols'] = [
       { wch: 6  },  // #
-      { wch: 26 },  // Product ID
       { wch: 40 },  // Product Name
       { wch: 22 },  // Category
       { wch: 12 },  // Quantity
