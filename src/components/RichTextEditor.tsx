@@ -14,6 +14,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
+import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './RichTextEditor.css';
 
 // ── Icons (inline SVG to avoid extra deps) ─────────────────────────────────
@@ -135,8 +136,9 @@ export const RichTextEditor: React.FC<Props> = ({ value, onChange, placeholder, 
     const file = e.target.files[0];
     setUploading(true);
     try {
-      const sRef = storageRef(storage, `blog_inline/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(sRef, file);
+      const prepared = await prepareImage(file, MAX_EDGE.card);
+      const sRef = storageRef(storage, `blog_inline/${Date.now()}_${prepared.name}`);
+      const task = uploadBytesResumable(sRef, prepared, UPLOAD_METADATA);
       await new Promise<void>((resolve, reject) => {
         task.on('state_changed', null, reject, resolve);
       });

@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './BlogManagement.css';
 import { AlertModal, type AlertType } from '../components/AlertModal';
 import { RichTextEditor } from '../components/RichTextEditor';
@@ -168,8 +169,9 @@ export const BlogManagement: React.FC = () => {
       const file = e.target.files[0];
       setIsUploadingImg(true);
       try {
-        const storageRef = ref(storage, `blog_covers/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const prepared = await prepareImage(file, MAX_EDGE.card);
+        const storageRef = ref(storage, `blog_covers/${Date.now()}_${prepared.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
         
         uploadTask.on(
           "state_changed",

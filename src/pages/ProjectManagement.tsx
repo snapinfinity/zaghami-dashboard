@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './ProjectManagement.css';
 import '../pages/BlogManagement.css'; // Re-use form styles
 import { AlertModal, type AlertType } from '../components/AlertModal';
@@ -481,8 +482,9 @@ export const ProjectManagement: React.FC = () => {
       const file = e.target.files[0];
       setIsUploadingImg(true);
       try {
-        const storageRef = ref(storage, `project_covers/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const prepared = await prepareImage(file, MAX_EDGE.card);
+        const storageRef = ref(storage, `project_covers/${Date.now()}_${prepared.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
         
         uploadTask.on(
           "state_changed",
@@ -511,8 +513,10 @@ export const ProjectManagement: React.FC = () => {
     const file = e.target.files[0];
     setIsUploadingIcon(true);
     try {
-      const storageRef = ref(storage, `category_icons/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      // This input accepts SVG; prepareImage passes vector formats through untouched.
+      const prepared = await prepareImage(file, MAX_EDGE.logo, 0.92);
+      const storageRef = ref(storage, `category_icons/${Date.now()}_${prepared.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
       uploadTask.on('state_changed', null,
         (err) => { console.error('Icon upload failed:', err); setIsUploadingIcon(false); showAlert('Upload Failed', 'Icon image upload failed.', 'danger'); },
         async () => {

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, doc, deleteDoc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './ClientManagement.css'; // Re-use the exact same CSS
 import { AlertModal, type AlertType } from '../components/AlertModal';
 
@@ -108,8 +109,9 @@ export const PartnerManagement: React.FC = () => {
       const file = e.target.files[0];
       setIsUploadingImg(true);
       try {
-        const storageRef = ref(storage, `partner_logos/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const prepared = await prepareImage(file, MAX_EDGE.logo, 0.92);
+        const storageRef = ref(storage, `partner_logos/${Date.now()}_${prepared.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
         
         uploadTask.on(
           "state_changed",
