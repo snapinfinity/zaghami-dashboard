@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './ProductManagement.css';
 import type { ProductCategory, SubcategoryNode } from './ProductCategories';
 import { AlertModal, type AlertType } from '../components/AlertModal';
@@ -350,8 +351,9 @@ export const ProductManagement: React.FC = () => {
     const file = e.target.files[0];
     setIsUploadingImg(true);
     try {
-      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(storageRef, file);
+      const prepared = await prepareImage(file, MAX_EDGE.card);
+      const storageRef = ref(storage, `products/${Date.now()}_${prepared.name}`);
+      const task = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
       task.on(
         'state_changed',
         null,

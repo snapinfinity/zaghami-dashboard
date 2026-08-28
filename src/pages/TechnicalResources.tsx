@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { UPLOAD_METADATA } from '../lib/uploadImage';
 import './TechnicalResources.css';
 import { AlertModal, type AlertType } from '../components/AlertModal';
 
@@ -187,8 +188,9 @@ export const TechnicalResources: React.FC = () => {
       computedSize = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
     }
     try {
+      // PDFs and Office documents — no image processing, but still worth caching.
       const storageRef = ref(storage, `technical_resources/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+      const uploadTask = uploadBytesResumable(storageRef, file, UPLOAD_METADATA);
       uploadTask.on(
         'state_changed',
         null,

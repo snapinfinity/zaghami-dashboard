@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './ProductCategories.css';
 import { AlertModal, type AlertType } from '../components/AlertModal';
 
@@ -683,8 +684,9 @@ export const ProductCategories: React.FC = () => {
     const file = e.target.files[0];
     setIsUploadingImg(true);
     try {
-      const storageRef = ref(storage, `product_categories/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(storageRef, file);
+      const prepared = await prepareImage(file, MAX_EDGE.card);
+      const storageRef = ref(storage, `product_categories/${Date.now()}_${prepared.name}`);
+      const task = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
       task.on('state_changed', null,
         (err) => { console.error('Upload failed:', err); setIsUploadingImg(false); showAlert('Upload Failed', 'Image upload failed.', 'danger'); },
         async () => { const url = await getDownloadURL(task.snapshot.ref); setFormData(prev => ({ ...prev, imageUrl: url })); setIsUploadingImg(false); }
@@ -697,8 +699,9 @@ export const ProductCategories: React.FC = () => {
     const file = e.target.files[0];
     setIsUploadingHero(true);
     try {
-      const storageRef = ref(storage, `product_categories_hero/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(storageRef, file);
+      const prepared = await prepareImage(file, MAX_EDGE.hero);
+      const storageRef = ref(storage, `product_categories_hero/${Date.now()}_${prepared.name}`);
+      const task = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
       task.on('state_changed', null,
         (err) => { console.error('Hero upload failed:', err); setIsUploadingHero(false); showAlert('Upload Failed', 'Hero image upload failed.', 'danger'); },
         async () => { const url = await getDownloadURL(task.snapshot.ref); setFormData(prev => ({ ...prev, heroImageUrl: url })); setIsUploadingHero(false); }
@@ -715,8 +718,9 @@ export const ProductCategories: React.FC = () => {
     const file = e.target.files[0];
     setUploadingState(true);
     try {
-      const storageRef = ref(storage, `product_categories_homepage/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(storageRef, file);
+      const prepared = await prepareImage(file, MAX_EDGE.card);
+      const storageRef = ref(storage, `product_categories_homepage/${Date.now()}_${prepared.name}`);
+      const task = uploadBytesResumable(storageRef, prepared, UPLOAD_METADATA);
       task.on('state_changed', null,
         (err) => { console.error(`Homepage image upload failed:`, err); setUploadingState(false); showAlert('Upload Failed', 'Homepage image upload failed.', 'danger'); },
         async () => { const url = await getDownloadURL(task.snapshot.ref); setFormData(prev => ({ ...prev, [imageKey]: url })); setUploadingState(false); }
