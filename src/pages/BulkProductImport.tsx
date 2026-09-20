@@ -52,6 +52,10 @@ const HEADER_ALIASES: Record<string, FieldKey> = {
 
 const normaliseHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, '');
 
+/** Already in our Storage bucket — the only host the website will serve. */
+const isStorageUrl = (url: string) => /^https:\/\/firebasestorage\.googleapis\.com\//i.test(url);
+const isExternalUrl = (url: string) => Boolean(url) && !isStorageUrl(url);
+
 const generateSlug = (name: string) =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
@@ -390,6 +394,9 @@ export const BulkProductImport: React.FC<BulkProductImportProps> = ({
     const file = r.imageFileName ? imageFiles.get(r.imageFileName.toLowerCase()) : undefined;
     const hasImage = Boolean(r.imageUrl || file);
     const warnings = [...r.warnings];
+    if (isExternalUrl(r.imageUrl)) {
+      warnings.push('External image URL — will be downloaded and re-hosted in Storage');
+    }
     if (!hasImage) {
       warnings.push(
         r.imageFileName
@@ -414,6 +421,22 @@ export const BulkProductImport: React.FC<BulkProductImportProps> = ({
     return getDownloadURL(task.snapshot.ref);
   };
 
+  /**
+   * Fetch an external image so it can be re-hosted in Storage. The website only
+   * serves images from firebasestorage.googleapis.com (next/image remotePatterns),
+   * so a foreign URL saved as-is would crash the product page rather than just
+   * show a broken photo. Subject to the remote host allowing CORS.
+   */
+  const fetchAsFile = async (url: string): Promise<File> => {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) throw new Error(`not an image (${blob.type || 'unknown type'})`);
+    const ext = blob.type.split('/')[1]?.replace('jpeg', 'jpg') || 'jpg';
+    const base = (new URL(url).pathname.split('/').pop() || '')
+      .replace(/\.[a-z0-9]+$/i, '').replace(/[^a-z0-9_-]+/gi, '-').slice(0, 40) || 'image';
+    return new File([blob], `${base}.${ext}`, { type: blob.type });
+  };
 
   const runImport = async () => {
     if (validRows.length === 0) return;
@@ -422,11 +445,22 @@ export const BulkProductImport: React.FC<BulkProductImportProps> = ({
 
     // 1. Images first — Storage uploads cannot participate in a Firestore batch.
     const withUrls: { row: ValidatedRow; imageUrl: string }[] = [];
-    const uploadTotal = validRows.filter(r => r.imageFile).length;
+    const uploadTotal = validRows.filter(r => r.imageFile || isExternalUrl(r.imageUrl)).length;
     let uploaded = 0;
     for (const row of validRows) {
       let imageUrl = row.imageUrl;
-      if (!imageUrl && row.imageFile) {
+      if (isExternalUrl(imageUrl)) {
+        setProgress({ current: uploaded, total: uploadTotal, label: `Downloading image ${uploaded + 1} of ${uploadTotal}` });
+        try {
+          imageUrl = await uploadImage(await fetchAsFile(imageUrl));
+        } catch (err) {
+          console.error(`Image download failed for row ${row.sheetRow}:`, err);
+          const why = err instanceof Error ? err.message : 'blocked by the remote site';
+          failures.push(`Row ${row.sheetRow} (${row.nameEn}): could not download image from URL (${why}) — imported without an image. Save the picture locally and use the "Image File" column instead.`);
+          imageUrl = '';
+        }
+        uploaded++;
+      } else if (!imageUrl && row.imageFile) {
         setProgress({ current: uploaded, total: uploadTotal, label: `Uploading image ${uploaded + 1} of ${uploadTotal}` });
         try {
           imageUrl = await uploadImage(row.imageFile);
@@ -664,7 +698,7 @@ export const BulkProductImport: React.FC<BulkProductImportProps> = ({
                       </td>
                       <td className="bulk-col-slug"><code>{r.slug}</code></td>
                       <td className="bulk-col-img">
-                        {r.imageUrl ? 'URL' : r.imageFile ? 'File ✓' : '—'}
+                        {r.imageUrl ? (isStorageUrl(r.imageUrl) ? 'URL' : 'URL ↓') : r.imageFile ? 'File ✓' : '—'}
                       </td>
                     </tr>
                   ))}
