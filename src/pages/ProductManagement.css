@@ -11,6 +11,11 @@
 /* ── Header ─────────────────────────────── */
 .products-page-header {
   margin-bottom: 2.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .products-page-header h1 {
@@ -21,6 +26,32 @@
 
 .products-page-header p {
   color: var(--text-secondary);
+}
+
+.btn-bulk-import {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.15rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-bulk-import:hover:not(:disabled) {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.btn-bulk-import:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .products-filter {

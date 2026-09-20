@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, X, Loader2, UploadCloud, Pencil, Trash2, ImageOff, Filter,
-  FolderTree, Plus, Check, Folder, FolderOpen, Search, ChevronLeft, ChevronRight
+  FolderTree, Plus, Check, Folder, FolderOpen, Search, ChevronLeft, ChevronRight,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -15,6 +16,7 @@ import { prepareImage, MAX_EDGE, UPLOAD_METADATA } from '../lib/uploadImage';
 import './ProductManagement.css';
 import type { ProductCategory, SubcategoryNode } from './ProductCategories';
 import { AlertModal, type AlertType } from '../components/AlertModal';
+import { BulkProductImport } from './BulkProductImport';
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 /** Flatten a subcategory tree into { id, label, depth } entries */
@@ -248,6 +250,7 @@ export const ProductManagement: React.FC = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [subcatManagerCatId, setSubcatManagerCatId] = useState<string | null>(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
@@ -525,8 +528,18 @@ export const ProductManagement: React.FC = () => {
 
       {/* Page header */}
       <header className="products-page-header">
-        <h1>Product Management</h1>
-        <p>Manage individual products and assign them to your website categories.</p>
+        <div>
+          <h1>Product Management</h1>
+          <p>Manage individual products and assign them to your website categories.</p>
+        </div>
+        <button
+          className="btn-bulk-import"
+          onClick={() => setIsBulkImportOpen(true)}
+          disabled={loading || categories.length === 0}
+          title={categories.length === 0 ? 'Add a product category first' : 'Import products from a spreadsheet'}
+        >
+          <FileSpreadsheet size={16} /> Bulk Import
+        </button>
       </header>
 
       {/* Filter and Loading state */}
@@ -940,7 +953,18 @@ export const ProductManagement: React.FC = () => {
         })()}
       </AnimatePresence>
 
-      <AlertModal 
+      {/* ── Bulk Import Modal ───────────────────────────────────── */}
+      <AnimatePresence>
+        {isBulkImportOpen && (
+          <BulkProductImport
+            categories={categories}
+            existingProducts={products}
+            onClose={() => setIsBulkImportOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AlertModal
         isOpen={alertConfig.isOpen}
         type={alertConfig.type}
         title={alertConfig.title}
