@@ -56,6 +56,22 @@ const normaliseHeader = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, '')
 const isStorageUrl = (url: string) => /^https:\/\/firebasestorage\.googleapis\.com\//i.test(url);
 const isExternalUrl = (url: string) => Boolean(url) && !isStorageUrl(url);
 
+/* ─── Language checks ────────────────────────────────────────────── */
+/**
+ * Share of a string's letters that are Arabic, or null when it has none.
+ * Digits, punctuation and model numbers ("SD-40") don't count either way, so
+ * an Arabic name that quotes a Latin code still reads as Arabic.
+ */
+const arabicShare = (s: string): number | null => {
+  const letters = s.replace(/[^A-Za-z؀-ۿ]/g, '');
+  if (!letters) return null;
+  return (letters.match(/[؀-ۿ]/g) || []).length / letters.length;
+};
+/** Mostly Arabic text — wrong for an English column. */
+const looksArabic = (s: string) => (arabicShare(s) ?? 0) > 0.5;
+/** Letters but not one Arabic letter — wrong for an Arabic column. */
+const lacksArabic = (s: string) => arabicShare(s) === 0;
+
 const generateSlug = (name: string) =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
@@ -329,6 +345,27 @@ export const BulkProductImport: React.FC<BulkProductImportProps> = ({
         if (!nameAr) errors.push('Arabic name is empty');
         if (!descriptionEn) errors.push('English description is empty');
         if (!descriptionAr) errors.push('Arabic description is empty');
+
+        // Headers are matched by name, but nothing stops a row's values from
+        // sitting a column off (a pasted block, a deleted cell). Catch text in
+        // the wrong language before it reaches the live site.
+        const wrongLanguage = [
+          looksArabic(nameEn) && 'Name (English) is in Arabic',
+          lacksArabic(nameAr) && 'Name (Arabic) has no Arabic text',
+          looksArabic(descriptionEn) && 'Description (English) is in Arabic',
+          lacksArabic(descriptionAr) && 'Description (Arabic) has no Arabic text',
+        ].filter((m): m is string => Boolean(m));
+        // Two or more is the shifted/swapped pattern — block it. A lone mismatch
+        // can be legitimate (an Arabic name that is just a model code like
+        // "GX-1"), so it only warns.
+        if (wrongLanguage.length >= 2) {
+          errors.push(
+            `${wrongLanguage.join('; ')} — the values look shifted or swapped. ` +
+            'Check each value in this row sits under the right header.'
+          );
+        } else {
+          warnings.push(...wrongLanguage);
+        }
 
         // Slug — honour an explicit value, otherwise derive it, then de-duplicate.
         const slugRaw = cell(row, 'slug');
